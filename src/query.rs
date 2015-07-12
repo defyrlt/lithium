@@ -4,7 +4,8 @@ use join::Join;
 pub struct Query<'a> {
     pub select: SelectType<'a>,
     pub from: &'a str,
-    pub joins: &'a [Join<'a>]
+    pub joins: &'a [Join<'a>],
+    pub group_by: &'a [&'a str]
 }
 
 impl<'a> Query<'a> {
@@ -23,6 +24,13 @@ impl<'a> Query<'a> {
             rv.push_str(&join.to_sql());
         }
 
+        if !self.group_by.is_empty() {
+            rv.push(' ');
+            rv.push_str("GROUP BY");
+            rv.push(' ');
+            rv.push_str(&self.group_by.connect(", "));
+        }
+
         rv.push(';');
         rv
     }
@@ -39,7 +47,8 @@ mod tests {
         let query = Query {
             select: SelectType::All,
             from: "test_table",
-            joins: &[]
+            joins: &[],
+            group_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table;".to_string());
     }
@@ -50,7 +59,8 @@ mod tests {
         let query = Query {
             select: SelectType::Specific(clauses),
             from: "test_table",
-            joins: &[]
+            joins: &[],
+            group_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -61,7 +71,8 @@ mod tests {
         let query = Query {
             select: SelectType::Specific(&clauses),
             from: "test_table",
-            joins: &[]
+            joins: &[],
+            group_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -73,7 +84,8 @@ mod tests {
         let query = Query {
             select: SelectType::Specific(&clauses),
             from: "test_table",
-            joins: &[]
+            joins: &[],
+            group_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -90,6 +102,7 @@ mod tests {
             select: SelectType::All,
             from: "test_table",
             joins: &[join],
+            group_by: &[]
         };
 
         assert_eq!(query.to_sql(), "SELECT * FROM test_table INNER JOIN target_table ON 2 == 2;");
@@ -113,9 +126,57 @@ mod tests {
             select: SelectType::All,
             from: "test_table",
             joins: &[bar_join, bazz_join],
+            group_by: &[]
         };
 
         assert_eq!(query.to_sql(), "SELECT * FROM test_table INNER JOIN bar_table ON 1 == 1 LEFT JOIN bazz_table ON 2 == 2;");
     }
-}
 
+    #[test]
+    fn select_all_and_group_by_foo() {
+        let query = Query {
+            select: SelectType::All,
+            from: "test_table",
+            joins: &[],
+            group_by: &["foo"]
+        };
+        assert_eq!(query.to_sql(), "SELECT * FROM test_table GROUP BY foo;".to_string());
+    }
+
+    #[test]
+    fn select_all_and_group_by_foo_and_bar() {
+        let query = Query {
+            select: SelectType::All,
+            from: "test_table",
+            joins: &[],
+            group_by: &["foo", "bar"]
+        };
+        assert_eq!(query.to_sql(), "SELECT * FROM test_table GROUP BY foo, bar;".to_string());
+    }
+
+    #[test]
+    fn test_complex() {
+        let bar_join = Join {
+            join_type: JoinType::Inner,
+            target: "bar_table",
+            clause: "1 == 1"
+        };
+
+        let bazz_join = Join {
+            join_type: JoinType::Left,
+            target: "bazz_table",
+            clause: "2 == 2"
+        };
+
+        let clauses = ["foo", "bar"];
+        let query = Query {
+            select: SelectType::Specific(&clauses),
+            from: "test_table",
+            joins: &[bar_join, bazz_join],
+            group_by: &["foo", "bar"]
+        };
+
+        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table INNER JOIN bar_table ON 1 == 1 LEFT JOIN bazz_table ON 2 == 2 GROUP BY foo, bar;");
+
+    }
+}
