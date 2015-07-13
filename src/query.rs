@@ -1,11 +1,13 @@
 use select::SelectType;
 use join::Join;
+use order_by::OrderBy;
 
 pub struct Query<'a> {
     pub select: SelectType<'a>,
     pub from: &'a str,
     pub joins: &'a [Join<'a>],
-    pub group_by: &'a [&'a str]
+    pub group_by: &'a [&'a str],
+    pub order_by: &'a [OrderBy<'a>]
 }
 
 impl<'a> Query<'a> {
@@ -30,6 +32,17 @@ impl<'a> Query<'a> {
             rv.push(' ');
             rv.push_str(&self.group_by.connect(", "));
         }
+        
+        if !self.order_by.is_empty() {
+            rv.push(' ');
+            rv.push_str("ORDER BY");
+            rv.push(' ');
+            rv.push_str(&self.order_by
+                        .into_iter()
+                        .map(|x| x.to_sql())
+                        .collect::<Vec<String>>()
+                        .connect(", "));
+        }
 
         rv.push(';');
         rv
@@ -41,6 +54,7 @@ mod tests {
     use super::Query;
     use select::SelectType;
     use join::{JoinType, Join};
+    use order_by::{Ordering, OrderBy};
 
     #[test]
     fn select_all() {
@@ -48,7 +62,8 @@ mod tests {
             select: SelectType::All,
             from: "test_table",
             joins: &[],
-            group_by: &[]
+            group_by: &[],
+            order_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table;".to_string());
     }
@@ -60,7 +75,8 @@ mod tests {
             select: SelectType::Specific(clauses),
             from: "test_table",
             joins: &[],
-            group_by: &[]
+            group_by: &[],
+            order_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -72,7 +88,8 @@ mod tests {
             select: SelectType::Specific(&clauses),
             from: "test_table",
             joins: &[],
-            group_by: &[]
+            group_by: &[],
+            order_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -85,7 +102,8 @@ mod tests {
             select: SelectType::Specific(&clauses),
             from: "test_table",
             joins: &[],
-            group_by: &[]
+            group_by: &[],
+            order_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -102,7 +120,8 @@ mod tests {
             select: SelectType::All,
             from: "test_table",
             joins: &[join],
-            group_by: &[]
+            group_by: &[],
+            order_by: &[]
         };
 
         assert_eq!(query.to_sql(), "SELECT * FROM test_table INNER JOIN target_table ON 2 == 2;");
@@ -126,7 +145,8 @@ mod tests {
             select: SelectType::All,
             from: "test_table",
             joins: &[bar_join, bazz_join],
-            group_by: &[]
+            group_by: &[],
+            order_by: &[]
         };
 
         assert_eq!(query.to_sql(), "SELECT * FROM test_table INNER JOIN bar_table ON 1 == 1 LEFT JOIN bazz_table ON 2 == 2;");
@@ -138,7 +158,8 @@ mod tests {
             select: SelectType::All,
             from: "test_table",
             joins: &[],
-            group_by: &["foo"]
+            group_by: &["foo"],
+            order_by: &[],
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table GROUP BY foo;".to_string());
     }
@@ -149,9 +170,49 @@ mod tests {
             select: SelectType::All,
             from: "test_table",
             joins: &[],
-            group_by: &["foo", "bar"]
+            group_by: &["foo", "bar"],
+            order_by: &[]
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table GROUP BY foo, bar;".to_string());
+    }
+
+    #[test]
+    fn select_all_and_order_by() {
+        let order_by_foo_asc = OrderBy {
+            ordering: Ordering::Ascending,
+            order_by: "foo"
+        };
+
+        let query = Query {
+            select: SelectType::All,
+            from: "test_table",
+            joins: &[],
+            group_by: &[],
+            order_by: &[order_by_foo_asc],
+        };
+        assert_eq!(query.to_sql(), "SELECT * FROM test_table ORDER BY foo ASC;".to_string());
+    }
+
+    #[test]
+    fn select_all_and_multi_order_by() {
+        let order_by_foo_asc = OrderBy {
+            ordering: Ordering::Ascending,
+            order_by: "foo"
+        };
+
+        let order_by_bar_desc = OrderBy {
+            ordering: Ordering::Descending,
+            order_by: "bar"
+        };
+
+        let query = Query {
+            select: SelectType::All,
+            from: "test_table",
+            joins: &[],
+            group_by: &[],
+            order_by: &[order_by_foo_asc, order_by_bar_desc]
+        };
+        assert_eq!(query.to_sql(), "SELECT * FROM test_table ORDER BY foo ASC, bar DESC;".to_string());
     }
 
     #[test]
@@ -173,7 +234,8 @@ mod tests {
             select: SelectType::Specific(&clauses),
             from: "test_table",
             joins: &[bar_join, bazz_join],
-            group_by: &["foo", "bar"]
+            group_by: &["foo", "bar"],
+            order_by: &[]
         };
 
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table INNER JOIN bar_table ON 1 == 1 LEFT JOIN bazz_table ON 2 == 2 GROUP BY foo, bar;");
