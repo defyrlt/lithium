@@ -30,10 +30,14 @@ impl<'a> ToSQL for &'a str {
 impl<'a, T: ToSQL> ToSQL for Where<'a, T> {
     fn to_sql(&self) -> String {
         let operator = &format!(" {} ", self.operator.to_sql());
-        self.clause.into_iter()
-            .map(|x| x.to_sql())
-            .collect::<Vec<_>>()
-            .join(operator)
+        let mut rv = String::new();
+        rv.push('(');
+        rv.push_str(&self.clause.into_iter()
+                    .map(|x| x.to_sql())
+                    .collect::<Vec<_>>()
+                    .join(operator));
+        rv.push(')');
+        rv
     }
 }
 
@@ -42,7 +46,7 @@ impl<'a, T: ToSQL> ToSQL for Where<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Operator, Where};
+    use super::{Operator, ToSQL, Where};
 
     #[test]
     fn test_operator() {
@@ -54,10 +58,11 @@ mod tests {
     }
 
     #[test]
-    fn test_generic() {
+    fn test_alone_where() {
         let foo = Where {
             operator: Operator::And,
-            clause: &["foo", "bar"]
+            clause: &["foo=bar", "fizz=bazz"]
         };
+        assert_eq!(&foo.to_sql(), "(foo=bar AND fizz=bazz")
     }
 }
