@@ -21,13 +21,13 @@ struct Where<'a, T: 'a + ?Sized> {
     pub clause: &'a [&'a T]
 }
 
-impl<'a> ToSQL for &'a str {
+impl ToSQL for str {
     fn to_sql(&self) -> String {
         self.to_string()
     }
 }
 
-impl<'a, T: ToSQL> ToSQL for Where<'a, T> {
+impl<'a, T: ToSQL + ?Sized> ToSQL for Where<'a, T> {
     fn to_sql(&self) -> String {
         let operator = &format!(" {} ", self.operator.to_sql());
         let mut rv = String::new();
@@ -40,9 +40,6 @@ impl<'a, T: ToSQL> ToSQL for Where<'a, T> {
         rv
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -63,6 +60,6 @@ mod tests {
             operator: Operator::And,
             clause: &["foo=bar", "fizz=bazz"]
         };
-        assert_eq!(&foo.to_sql(), "(foo=bar AND fizz=bazz")
+        assert_eq!(foo.to_sql(), "(foo=bar AND fizz=bazz".to_string())
     }
 }
