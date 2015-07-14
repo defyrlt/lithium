@@ -16,7 +16,7 @@ trait ToSQL {
     fn to_sql(&self) -> String;
 }
 
-struct Where<'a, T: 'a> {
+struct Where<'a, T: 'a + ?Sized> {
     pub operator: Operator,
     pub clause: &'a [&'a T]
 }
@@ -30,12 +30,10 @@ impl<'a> ToSQL for &'a str {
 impl<'a, T: ToSQL> ToSQL for Where<'a, T> {
     fn to_sql(&self) -> String {
         let operator = &format!(" {} ", self.operator.to_sql());
-        let mut rv = String::new();
-        rv.push_str(&self.clause.into_iter()
-                    .map(|x| x.to_sql())
-                    .collect::<Vec<_>>()
-                    .connect(operator));
-        rv
+        self.clause.into_iter()
+            .map(|x| x.to_sql())
+            .collect::<Vec<_>>()
+            .join(operator)
     }
 }
 
