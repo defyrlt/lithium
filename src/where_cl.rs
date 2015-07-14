@@ -1,32 +1,41 @@
-pub enum Conjunction {
+pub enum Operator {
     And,
     Or
 }
 
-impl Conjunction {
+impl Operator {
     pub fn to_sql(&self) -> &str {
         match *self {
-            Conjunction::And => " AND ",
-            Conjunction::Or => " OR "
+            Operator::And => "AND",
+            Operator::Or => "OR"
         }
     }
 }
 
-struct Where<'a> {
-    pub conjunction: Conjunction,
-    pub where_cl: &'a [&'a str]
+trait ToSQL {
+    fn to_sql(&self) -> String;
 }
 
-impl<'a> Where<'a> {
-    pub fn to_sql(&self) -> String {
-        let mut rv = String::new();
-        rv.push_str(&self.where_cl
-                    .connect(self.conjunction.to_sql()));
-        rv
-    }
+struct Where<'a, T: 'a> {
+    pub operator: Operator,
+    pub clause: &'a [&'a T]
+}
 
-    pub fn get_nested(&self) -> String {
-        format!("({})", self.to_sql())
+impl<'a> ToSQL for &'a str {
+    fn to_sql(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl<'a, T: ToSQL> ToSQL for Where<'a, T> {
+    fn to_sql(&self) -> String {
+        let operator = &format!(" {} ", self.operator.to_sql());
+        let mut rv = String::new();
+        rv.push_str(&self.clause.into_iter()
+                    .map(|x| x.to_sql())
+                    .collect::<Vec<_>>()
+                    .connect(operator));
+        rv
     }
 }
 
@@ -35,43 +44,22 @@ impl<'a> Where<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Conjunction, Where};
+    use super::{Operator, Where};
 
     #[test]
-    fn test_conjunction() {
-        let and = Conjunction::And;
-        let or = Conjunction::Or;
+    fn test_operator() {
+        let and = Operator::And;
+        let or = Operator::Or;
 
-        assert_eq!(and.to_sql(), " AND ");
-        assert_eq!(or.to_sql(), " OR ");
+        assert_eq!(and.to_sql(), "AND");
+        assert_eq!(or.to_sql(), "OR");
     }
 
     #[test]
-    fn test_where_clause() {
-        let where_clause = Where {
-            conjunction: Conjunction::And,
-            where_cl: &["fizz = bazz", "lala = blah"]
+    fn test_generic() {
+        let foo = Where {
+            operator: Operator::And,
+            clause: &["foo", "bar"]
         };
-        assert_eq!(where_clause.to_sql(), "fizz = bazz AND lala = blah");
-    }
-
-    #[test]
-    fn test_where_nested_clause() {
-        let where_clause_foo = Where {
-            conjunction: Conjunction::And,
-            where_cl: &["foo = bar", "fizz = bazz"]
-        };
-
-        let where_clause_bar = Where {
-            conjunction: Conjunction::Or,
-            where_cl: &["None = Null"]
-        };
-
-        let where_nested = Where {
-            conjunction: Conjunction::And,
-            where_cl: &[&where_clause_foo.get_nested(),
-                        &where_clause_bar.get_nested()]
-        };
-        assert_eq!(where_nested.to_sql(), "(foo = bar AND fizz = bazz) AND (None = Null)");
     }
 }
