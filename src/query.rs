@@ -4,7 +4,7 @@ use order_by::OrderBy;
 use where_cl::{ToSQL, Where};
 
 
-pub struct Query<'a, T: 'a + ToSQL> {
+pub struct Query<'a, T: ToSQL> {
     pub select: SelectType<'a>,
     pub from: &'a str,
     pub joins: &'a [Join<'a>],
@@ -14,7 +14,7 @@ pub struct Query<'a, T: 'a + ToSQL> {
 }
 
 
-impl<'a, T: 'a + ToSQL> Query<'a, T> {
+impl<'a, T: ToSQL> Query<'a, T> {
     fn to_sql(&self) -> String {
         let mut rv = String::new();
         rv.push_str("SELECT");
@@ -25,7 +25,7 @@ impl<'a, T: 'a + ToSQL> Query<'a, T> {
         rv.push(' ');
         rv.push_str(self.from);
 
-        match *self.where_cl {
+        match self.where_cl {
             Some(ref clause) => {
                 rv.push(' ');
                 rv.push_str("WHERE");
@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn select_all() {
-        let query: Query<ToSQL> = Query {
+        let query: Query = Query {
             select: SelectType::All,
             from: "test_table",
             joins: &[],
