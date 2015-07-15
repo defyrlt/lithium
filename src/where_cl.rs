@@ -47,10 +47,41 @@ impl<'a, T: ToSQL> ToSQL for &'a Where<'a, T>{
     }
 }
 
+pub enum WhereType<'a, T: 'a + ToSQL> {
+    Simple(&'a str),
+    Extended(&'a Where<'a, T>),
+    Empty
+}
+
+impl<'a, T: 'a + ToSQL> WhereType<'a, T> {
+    pub fn to_sql(&self) -> String {
+        match *self {
+            WhereType::Simple(string) => string.to_sql(),
+            WhereType::Extended(clause) => clause.to_sql(),
+            WhereType::Empty => String::new()
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use super::{Operator, ToSQL, Where};
+    use super::{Operator, ToSQL, WhereType, Where};
+
+    #[test]
+    fn test_where_types() {
+        let foo = Where {
+            operator: Operator::And,
+            clause: &["foo=bar", "lala=blah"]
+        };
+
+        let simple = WhereType::Simple("fizz=bazz");
+        let extended = WhereType::Extended(&foo);
+        let empty = WhereType::Empty;
+
+        assert_eq!(simple.to_sql(), "fizz=bazz".to_string());
+        assert_eq!(extended.to_sql(), "(foo=bar AND lala=blah)".to_string());
+        assert_eq!(empty.to_sql().is_empty(), true);
+    }
 
     #[test]
     fn test_operator() {

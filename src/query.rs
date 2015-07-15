@@ -1,20 +1,20 @@
 use select::SelectType;
 use join::Join;
 use order_by::OrderBy;
-use where_cl::{ToSQL, Where};
+use where_cl::{ToSQL, WhereType, Where};
 
 
-pub struct Query<'a, T: ToSQL> {
+pub struct Query<'a, T: 'a + ToSQL> {
     pub select: SelectType<'a>,
     pub from: &'a str,
     pub joins: &'a [Join<'a>],
     pub group_by: &'a [&'a str],
     pub order_by: &'a [OrderBy<'a>],
-    pub where_cl: Option<T>
+    pub where_cl: WhereType<'a, T>
 }
 
 
-impl<'a, T: ToSQL> Query<'a, T> {
+impl<'a, T: 'a + ToSQL> Query<'a, T> {
     fn to_sql(&self) -> String {
         let mut rv = String::new();
         rv.push_str("SELECT");
@@ -24,17 +24,15 @@ impl<'a, T: ToSQL> Query<'a, T> {
         rv.push_str("FROM");
         rv.push(' ');
         rv.push_str(self.from);
-
-        match self.where_cl {
-            Some(ref clause) => {
-                rv.push(' ');
-                rv.push_str("WHERE");
-                rv.push(' ');
-                rv.push_str(&clause.to_sql());
-            },
-            None => ()
-        }
         
+        let where_sql = self.where_cl.to_sql();
+        if !where_sql.is_empty() {
+            rv.push(' ');
+            rv.push_str("WHERE");
+            rv.push(' ');
+            rv.push_str(&where_sql);
+        }
+
         for join in self.joins {
             rv.push(' ');
             rv.push_str(&join.to_sql());
@@ -69,17 +67,17 @@ mod tests {
     use select::SelectType;
     use join::{JoinType, Join};
     use order_by::{Ordering, OrderBy};
-    use where_cl::{ToSQL, Where};
+    use where_cl::{ToSQL, WhereType, Where};
 
     #[test]
     fn select_all() {
-        let query: Query = Query {
+        let query = Query {
             select: SelectType::All,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table;".to_string());
     }
@@ -93,7 +91,7 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -107,7 +105,7 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -122,7 +120,7 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -141,7 +139,7 @@ mod tests {
             joins: &[join],
             group_by: &[],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
 
         assert_eq!(query.to_sql(), "SELECT * FROM test_table INNER JOIN target_table ON 2 == 2;");
@@ -167,7 +165,7 @@ mod tests {
             joins: &[bar_join, bazz_join],
             group_by: &[],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
 
         assert_eq!(query.to_sql(), "SELECT * FROM test_table INNER JOIN bar_table ON 1 == 1 LEFT JOIN bazz_table ON 2 == 2;");
@@ -181,7 +179,7 @@ mod tests {
             joins: &[],
             group_by: &["foo"],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table GROUP BY foo;".to_string());
     }
@@ -194,7 +192,7 @@ mod tests {
             joins: &[],
             group_by: &["foo", "bar"],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table GROUP BY foo, bar;".to_string());
     }
@@ -212,7 +210,7 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[order_by_foo_asc],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table ORDER BY foo ASC;".to_string());
     }
@@ -235,7 +233,7 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[order_by_foo_asc, order_by_bar_desc],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table ORDER BY foo ASC, bar DESC;".to_string());
     }
@@ -261,7 +259,7 @@ mod tests {
             joins: &[bar_join, bazz_join],
             group_by: &["foo", "bar"],
             order_by: &[],
-            where_cl: None
+            where_cl: WhereType::Empty
         };
 
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table INNER JOIN bar_table ON 1 == 1 LEFT JOIN bazz_table ON 2 == 2 GROUP BY foo, bar;");
