@@ -16,7 +16,7 @@ trait ToSQL {
     fn to_sql(&self) -> String;
 }
 
-struct Where<'a, T: 'a> {
+pub struct Where<'a, T: 'a> {
     pub operator: Operator,
     pub clause: &'a [T]
 }
@@ -46,6 +46,7 @@ impl<'a, T: ToSQL> ToSQL for &'a Where<'a, T>{
         (**self).to_sql()
     }
 }
+
 
 #[cfg(test)]
 mod tests {
