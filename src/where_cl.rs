@@ -12,11 +12,11 @@ impl Operator {
     }
 }
 
-trait ToSQL {
+pub trait ToSQL {
     fn to_sql(&self) -> String;
 }
 
-pub struct Where<'a, T: 'a> {
+pub struct Where<'a, T: 'a + ToSQL> {
     pub operator: Operator,
     pub clause: &'a [T]
 }
