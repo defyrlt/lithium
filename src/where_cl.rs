@@ -66,7 +66,7 @@ mod tests {
             operator: Operator::And,
             clause: &["foo=bar", "fizz=bazz"]
         };
-        assert_eq!(foo.to_sql(), "(foo=bar AND fizz=bazz".to_string())
+        assert_eq!(foo.to_sql(), "(foo=bar AND fizz=bazz)".to_string())
     }
 
     #[test]
@@ -86,7 +86,7 @@ mod tests {
             clause: &[&foo, &bar]
         };
 
-        assert_eq!(bazz.to_sql(), "(foo == bar AND fizz == bazz) OR (a == b AND c == d)".to_string());
+        assert_eq!(bazz.to_sql(), "((foo == bar AND fizz == bazz) OR (a == b AND c == d))".to_string());
     }
 
     #[test]
