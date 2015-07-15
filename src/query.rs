@@ -1,16 +1,20 @@
 use select::SelectType;
 use join::Join;
 use order_by::OrderBy;
+use where_cl::{ToSQL, Where};
 
-pub struct Query<'a> {
+
+pub struct Query<'a, T: 'a + ToSQL> {
     pub select: SelectType<'a>,
     pub from: &'a str,
     pub joins: &'a [Join<'a>],
     pub group_by: &'a [&'a str],
-    pub order_by: &'a [OrderBy<'a>]
+    pub order_by: &'a [OrderBy<'a>],
+    pub where_cl: Option<T>
 }
 
-impl<'a> Query<'a> {
+
+impl<'a, T: 'a + ToSQL> Query<'a, T> {
     fn to_sql(&self) -> String {
         let mut rv = String::new();
         rv.push_str("SELECT");
@@ -20,6 +24,16 @@ impl<'a> Query<'a> {
         rv.push_str("FROM");
         rv.push(' ');
         rv.push_str(self.from);
+
+        match *self.where_cl {
+            Some(ref clause) => {
+                rv.push(' ');
+                rv.push_str("WHERE");
+                rv.push(' ');
+                rv.push_str(&clause.to_sql());
+            },
+            None => ()
+        }
         
         for join in self.joins {
             rv.push(' ');
@@ -55,15 +69,17 @@ mod tests {
     use select::SelectType;
     use join::{JoinType, Join};
     use order_by::{Ordering, OrderBy};
+    use where_cl::{ToSQL, Where};
 
     #[test]
     fn select_all() {
-        let query = Query {
+        let query: Query<ToSQL> = Query {
             select: SelectType::All,
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[]
+            order_by: &[],
+            where_cl: None
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table;".to_string());
     }
@@ -76,7 +92,8 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[]
+            order_by: &[],
+            where_cl: None
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -89,7 +106,8 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[]
+            order_by: &[],
+            where_cl: None
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -103,7 +121,8 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[]
+            order_by: &[],
+            where_cl: None
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -121,7 +140,8 @@ mod tests {
             from: "test_table",
             joins: &[join],
             group_by: &[],
-            order_by: &[]
+            order_by: &[],
+            where_cl: None
         };
 
         assert_eq!(query.to_sql(), "SELECT * FROM test_table INNER JOIN target_table ON 2 == 2;");
@@ -146,7 +166,8 @@ mod tests {
             from: "test_table",
             joins: &[bar_join, bazz_join],
             group_by: &[],
-            order_by: &[]
+            order_by: &[],
+            where_cl: None
         };
 
         assert_eq!(query.to_sql(), "SELECT * FROM test_table INNER JOIN bar_table ON 1 == 1 LEFT JOIN bazz_table ON 2 == 2;");
@@ -160,6 +181,7 @@ mod tests {
             joins: &[],
             group_by: &["foo"],
             order_by: &[],
+            where_cl: None
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table GROUP BY foo;".to_string());
     }
@@ -171,7 +193,8 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &["foo", "bar"],
-            order_by: &[]
+            order_by: &[],
+            where_cl: None
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table GROUP BY foo, bar;".to_string());
     }
@@ -189,6 +212,7 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[order_by_foo_asc],
+            where_cl: None
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table ORDER BY foo ASC;".to_string());
     }
@@ -210,7 +234,8 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[order_by_foo_asc, order_by_bar_desc]
+            order_by: &[order_by_foo_asc, order_by_bar_desc],
+            where_cl: None
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table ORDER BY foo ASC, bar DESC;".to_string());
     }
@@ -235,7 +260,8 @@ mod tests {
             from: "test_table",
             joins: &[bar_join, bazz_join],
             group_by: &["foo", "bar"],
-            order_by: &[]
+            order_by: &[],
+            where_cl: None
         };
 
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table INNER JOIN bar_table ON 1 == 1 LEFT JOIN bazz_table ON 2 == 2 GROUP BY foo, bar;");
