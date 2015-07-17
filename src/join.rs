@@ -3,7 +3,7 @@ pub enum JoinType {
     Inner,
     Left,
     Right,
-    Outer
+    Outer,
 }
 
 impl JoinType {
@@ -20,7 +20,7 @@ impl JoinType {
 pub struct Join<'a> {
     pub join_type: JoinType,
     pub target: &'a str,
-    pub clause: &'a str
+    pub clause: &'a str,
 }
 
 impl<'a> Join<'a> {
@@ -58,11 +58,7 @@ mod tests {
 
     #[test]
     fn test_join() {
-        let join = Join {
-            join_type: JoinType::Inner,
-            target: "target_table",
-            clause: "2 == 2"
-        };
+        let join = Join { join_type: JoinType::Inner, target: "target_table", clause: "2 == 2" };
         assert_eq!(join.to_sql(), "INNER JOIN target_table ON 2 == 2");
     }
 }
