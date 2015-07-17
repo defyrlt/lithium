@@ -47,19 +47,25 @@ impl<'a, T: ToSQL> ToSQL for &'a Where<'a, T>{
     }
 }
 
-pub enum WhereType<'a, T: 'a + ToSQL> {
+pub enum WhereType<'a> {
     Simple(&'a str),
-    Extended(&'a Where<'a, T>),
+    Extended(&'a ToSQL),
     Empty
 }
 
-impl<'a, T: 'a + ToSQL> WhereType<'a, T> {
-    pub fn to_sql(&self) -> String {
+impl<'a> ToSQL for WhereType<'a> {
+    fn to_sql(&self) -> String {
         match *self {
             WhereType::Simple(string) => string.to_sql(),
             WhereType::Extended(clause) => clause.to_sql(),
             WhereType::Empty => String::new()
         }
+    }
+}
+
+impl<'a> ToSQL for &'a WhereType<'a> {
+    fn to_sql(&self) -> String {
+        (**self).to_sql()
     }
 }
 
@@ -118,7 +124,11 @@ mod tests {
             clause: &[&foo, &bar]
         };
 
-        assert_eq!(bazz.to_sql(), "((foo == bar AND fizz == bazz) OR (a == b AND c == d))".to_string());
+        let test_sql_string = {
+            "((foo == bar AND fizz == bazz) OR \
+            (a == b AND c == d))".to_string()
+        };
+        assert_eq!(bazz.to_sql(), test_sql_string);
     }
 
     #[test]
@@ -148,6 +158,12 @@ mod tests {
             clause: &[&bazz1, &bazz2]
         };
 
-        assert_eq!(fizz.to_sql(), "(((foo == bar AND fizz == bazz) OR (a == b AND c == d)) AND ((a == b AND c == d) OR (foo == bar AND fizz == bazz)))".to_string());
+        let test_sql_string = {
+            "(((foo == bar AND fizz == bazz) OR \
+            (a == b AND c == d)) AND \
+            ((a == b AND c == d) OR \
+            (foo == bar AND fizz == bazz)))".to_string()
+        };
+        assert_eq!(fizz.to_sql(), test_sql_string);
     }
 }

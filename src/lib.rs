@@ -1,3 +1,4 @@
+#![feature(test)]
 mod query;
 mod select;
 mod join;
