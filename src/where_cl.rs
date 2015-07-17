@@ -48,7 +48,6 @@ impl<'a, T: ToSQL> ToSQL for &'a Where<'a, T>{
 }
 
 pub enum WhereType<'a> {
-    Simple(&'a str),
     Extended(&'a ToSQL),
     Empty
 }
@@ -56,7 +55,6 @@ pub enum WhereType<'a> {
 impl<'a> ToSQL for WhereType<'a> {
     fn to_sql(&self) -> String {
         match *self {
-            WhereType::Simple(string) => string.to_sql(),
             WhereType::Extended(clause) => clause.to_sql(),
             WhereType::Empty => String::new()
         }
@@ -80,12 +78,12 @@ mod tests {
             clause: &["foo=bar", "lala=blah"]
         };
 
-        let simple = WhereType::Simple("fizz=bazz");
-        let extended = WhereType::Extended(&foo);
+        let extended_where = WhereType::Extended(&foo);
+        let extended_string = WhereType::Extended(&"fizz=bazz");
         let empty = WhereType::Empty;
 
-        assert_eq!(simple.to_sql(), "fizz=bazz".to_string());
-        assert_eq!(extended.to_sql(), "(foo=bar AND lala=blah)".to_string());
+        assert_eq!(extended_string.to_sql(), "fizz=bazz".to_string());
+        assert_eq!(extended_where.to_sql(), "(foo=bar AND lala=blah)".to_string());
         assert_eq!(empty.to_sql().is_empty(), true);
     }
 
