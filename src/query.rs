@@ -30,12 +30,14 @@ impl<'a> Query<'a> {
             rv.push_str(&join.to_sql());
         }
 
-        let where_sql = self.where_cl.to_sql();
-        if !where_sql.is_empty() {
-            rv.push(' ');
-            rv.push_str("WHERE");
-            rv.push(' ');
-            rv.push_str(&where_sql);
+        match self.where_cl {
+            WhereType::Empty => {},
+            _ => {
+                rv.push(' ');
+                rv.push_str("WHERE");
+                rv.push(' ');
+                rv.push_str(&self.where_cl.to_sql());
+            }
         }
 
         if !self.group_by.is_empty() {
@@ -64,7 +66,6 @@ impl<'a> Query<'a> {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    //use super::*;
     use self::test::Bencher;
 
     use super::Query;
@@ -285,7 +286,7 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Extended(&"foo=bar")
+            where_cl: WhereType::Simple("foo=bar")
         };
 
         let test_sql_string = {
