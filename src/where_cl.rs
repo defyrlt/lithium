@@ -71,9 +71,9 @@ mod tests {
     fn test_alone_where() {
         let foo = Where {
             operator: Operator::And,
-            clause: &["foo=bar", "fizz=bazz"]
+            clause: &["foo == bar", "fizz == bazz"]
         };
-        assert_eq!(foo.to_sql(), "(foo=bar AND fizz=bazz)".to_string())
+        assert_eq!(foo.to_sql(), "(foo == bar AND fizz == bazz)".to_string())
     }
 
     #[test]
