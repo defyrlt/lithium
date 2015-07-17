@@ -6,6 +6,7 @@ use where_cl::{ToSQL, WhereType};
 
 pub struct Query<'a> {
     pub select: SelectType<'a>,
+    pub distinct: bool,
     pub from: &'a str,
     pub joins: &'a [Join<'a>],
     pub group_by: &'a [&'a str],
@@ -19,6 +20,15 @@ impl<'a> Query<'a> {
     fn to_sql(&self) -> String {
         let mut rv = String::new();
         rv.push_str("SELECT");
+
+        match self.distinct {
+            true => {
+                rv.push(' ');
+                rv.push_str("DISTINCT");
+            },
+            false => {}
+        }
+
         rv.push(' ');
         rv.push_str(&self.select.to_sql());
         rv.push(' ');
@@ -95,6 +105,7 @@ mod tests {
     fn select_all() {
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -110,6 +121,7 @@ mod tests {
         let clauses = &["foo", "bar"];
         let query = Query {
             select: SelectType::Specific(clauses),
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -125,6 +137,7 @@ mod tests {
         let clauses = vec!["foo", "bar"];
         let query = Query {
             select: SelectType::Specific(&clauses),
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -141,6 +154,7 @@ mod tests {
         let clauses = vec!["foo", "bar"];
         let query = Query {
             select: SelectType::Specific(&clauses),
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -161,6 +175,7 @@ mod tests {
 
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[join],
             group_by: &[],
@@ -193,6 +208,7 @@ mod tests {
 
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[bar_join, bazz_join],
             group_by: &[],
@@ -214,6 +230,7 @@ mod tests {
     fn select_all_and_group_by_foo() {
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &["foo"],
@@ -234,6 +251,7 @@ mod tests {
     fn select_all_and_group_by_foo_and_bar() {
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &["foo", "bar"],
@@ -259,6 +277,7 @@ mod tests {
 
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -289,6 +308,7 @@ mod tests {
 
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -309,6 +329,7 @@ mod tests {
     fn select_all_where_simple() {
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -334,6 +355,7 @@ mod tests {
 
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -359,6 +381,7 @@ mod tests {
 
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -384,6 +407,7 @@ mod tests {
 
         let query = Query {
             select: SelectType::All,
+            distinct: false,
             from: "test_table",
             joins: &[],
             group_by: &[],
@@ -398,6 +422,27 @@ mod tests {
             HAVING (foo == bar AND lala == blah);".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn select_all_distinct() {
+        let query = Query {
+            select: SelectType::All,
+            distinct: true,
+            from: "test_table",
+            joins: &[],
+            group_by: &[],
+            order_by: &[],
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty
+        };
+
+        let test_sql_string = {
+            "SELECT DISTINCT * \
+            FROM test_table;".to_string()
+        };
+        assert_eq!(query.to_sql(), test_sql_string);
+
     }
 
     #[test]
@@ -432,6 +477,7 @@ mod tests {
         let clauses = ["foo", "bar"];
         let query = Query {
             select: SelectType::Specific(&clauses),
+            distinct: true,
             from: "test_table",
             joins: &[bar_join, bazz_join],
             group_by: &["foo", "bar"],
@@ -441,7 +487,7 @@ mod tests {
         };
 
         let test_sql_string = {
-            "SELECT foo, bar \
+            "SELECT DISTINCT foo, bar \
             FROM test_table \
             INNER JOIN bar_table ON 1 == 1 \
             LEFT JOIN bazz_table ON 2 == 2 \
@@ -485,6 +531,7 @@ mod tests {
         let clauses = ["foo", "bar"];
         let query = Query {
             select: SelectType::Specific(&clauses),
+            distinct: false,
             from: "test_table",
             joins: &[bar_join, bazz_join],
             group_by: &["foo", "bar"],
@@ -523,6 +570,7 @@ mod tests {
         let clauses = ["foo", "bar"];
         let query = Query {
             select: SelectType::Specific(&clauses),
+            distinct: false,
             from: "test_table",
             joins: &[bar_join, bazz_join],
             group_by: &["foo", "bar"],
