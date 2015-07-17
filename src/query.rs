@@ -1,3 +1,4 @@
+
 use select::SelectType;
 use join::Join;
 use order_by::OrderBy;
@@ -11,7 +12,7 @@ pub struct Query<'a> {
     pub group_by: &'a [&'a str],
     pub order_by: &'a [OrderBy<'a>],
     pub where_cl: WhereType<'a>,
-    pub having: WhereType<'a>
+    pub having: WhereType<'a>,
 }
 
 
@@ -25,7 +26,7 @@ impl<'a> Query<'a> {
         rv.push_str("FROM");
         rv.push(' ');
         rv.push_str(self.from);
-        
+
         for join in self.joins {
             rv.push(' ');
             rv.push_str(&join.to_sql());
@@ -63,7 +64,7 @@ impl<'a> Query<'a> {
                 rv.push_str(&clause.to_sql());
             }
         }
-        
+
         if !self.order_by.is_empty() {
             rv.push(' ');
             rv.push_str("ORDER BY");
@@ -153,11 +154,7 @@ mod tests {
 
     #[test]
     fn select_foo_and_join_bar() {
-        let join = Join {
-            join_type: JoinType::Inner,
-            target: "target_table",
-            clause: "2 == 2"
-        };
+        let join = Join { join_type: JoinType::Inner, target: "target_table", clause: "2 == 2" };
 
         let query = Query {
             select: SelectType::All,
@@ -179,17 +176,9 @@ mod tests {
 
     #[test]
     fn select_foo_and_join_bar_and_bazz() {
-        let bar_join = Join {
-            join_type: JoinType::Inner,
-            target: "bar_table",
-            clause: "1 == 1"
-        };
+        let bar_join = Join { join_type: JoinType::Inner, target: "bar_table", clause: "1 == 1" };
 
-        let bazz_join = Join {
-            join_type: JoinType::Left,
-            target: "bazz_table",
-            clause: "2 == 2"
-        };
+        let bazz_join = Join { join_type: JoinType::Left, target: "bazz_table", clause: "2 == 2" };
 
         let query = Query {
             select: SelectType::All,
@@ -252,10 +241,7 @@ mod tests {
 
     #[test]
     fn select_all_and_order_by() {
-        let order_by_foo_asc = OrderBy {
-            ordering: Ordering::Ascending,
-            order_by: "foo"
-        };
+        let order_by_foo_asc = OrderBy { ordering: Ordering::Ascending, order_by: "foo" };
 
         let query = Query {
             select: SelectType::All,
@@ -277,15 +263,9 @@ mod tests {
 
     #[test]
     fn select_all_and_multi_order_by() {
-        let order_by_foo_asc = OrderBy {
-            ordering: Ordering::Ascending,
-            order_by: "foo"
-        };
+        let order_by_foo_asc = OrderBy { ordering: Ordering::Ascending, order_by: "foo" };
 
-        let order_by_bar_desc = OrderBy {
-            ordering: Ordering::Descending,
-            order_by: "bar"
-        };
+        let order_by_bar_desc = OrderBy { ordering: Ordering::Descending, order_by: "bar" };
 
         let query = Query {
             select: SelectType::All,
@@ -327,10 +307,7 @@ mod tests {
 
     #[test]
     fn select_all_where_extended() {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where { operator: Operator::And, clause: &["foo == bar", "lala == blah"] };
 
         let query = Query {
             select: SelectType::All,
@@ -352,10 +329,7 @@ mod tests {
 
     #[test]
     fn select_all_with_having() {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where { operator: Operator::And, clause: &["foo == bar", "lala == blah"] };
 
         let query = Query {
             select: SelectType::All,
@@ -364,7 +338,7 @@ mod tests {
             group_by: &[],
             order_by: &[],
             where_cl: WhereType::Empty,
-            having: WhereType::Simple("foo == bar")
+            having: WhereType::Simple("foo == bar"),
         };
 
         let test_sql_string = {
@@ -377,10 +351,7 @@ mod tests {
 
     #[test]
     fn select_all_with_extended_having() {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where { operator: Operator::And, clause: &["foo == bar", "lala == blah"] };
 
         let query = Query {
             select: SelectType::All,
@@ -402,32 +373,15 @@ mod tests {
 
     #[test]
     fn test_complex() {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where { operator: Operator::And, clause: &["foo == bar", "lala == blah"] };
 
-        let order_by_bar_desc = OrderBy {
-            ordering: Ordering::Descending,
-            order_by: "bar"
-        };
+        let order_by_bar_desc = OrderBy { ordering: Ordering::Descending, order_by: "bar" };
 
-        let order_by_foo_asc = OrderBy {
-            ordering: Ordering::Ascending,
-            order_by: "foo"
-        };
+        let order_by_foo_asc = OrderBy { ordering: Ordering::Ascending, order_by: "foo" };
 
-        let bar_join = Join {
-            join_type: JoinType::Inner,
-            target: "bar_table",
-            clause: "1 == 1"
-        };
+        let bar_join = Join { join_type: JoinType::Inner, target: "bar_table", clause: "1 == 1" };
 
-        let bazz_join = Join {
-            join_type: JoinType::Left,
-            target: "bazz_table",
-            clause: "2 == 2"
-        };
+        let bazz_join = Join { join_type: JoinType::Left, target: "bazz_table", clause: "2 == 2" };
 
         let clauses = ["foo", "bar"];
         let query = Query {
@@ -437,7 +391,7 @@ mod tests {
             group_by: &["foo", "bar"],
             order_by: &[order_by_bar_desc, order_by_foo_asc],
             where_cl: WhereType::Extended(&where_cl),
-            having: WhereType::Extended(&where_cl)
+            having: WhereType::Extended(&where_cl),
         };
 
         let test_sql_string = {
@@ -455,32 +409,15 @@ mod tests {
 
     #[bench]
     fn bench_query_with_extended_where(b: &mut Bencher) {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where { operator: Operator::And, clause: &["foo == bar", "lala == blah"] };
 
-        let order_by_bar_desc = OrderBy {
-            ordering: Ordering::Descending,
-            order_by: "bar"
-        };
+        let order_by_bar_desc = OrderBy { ordering: Ordering::Descending, order_by: "bar" };
 
-        let order_by_foo_asc = OrderBy {
-            ordering: Ordering::Ascending,
-            order_by: "foo"
-        };
+        let order_by_foo_asc = OrderBy { ordering: Ordering::Ascending, order_by: "foo" };
 
-        let bar_join = Join {
-            join_type: JoinType::Inner,
-            target: "bar_table",
-            clause: "1 == 1"
-        };
+        let bar_join = Join { join_type: JoinType::Inner, target: "bar_table", clause: "1 == 1" };
 
-        let bazz_join = Join {
-            join_type: JoinType::Left,
-            target: "bazz_table",
-            clause: "2 == 2"
-        };
+        let bazz_join = Join { join_type: JoinType::Left, target: "bazz_table", clause: "2 == 2" };
 
         let clauses = ["foo", "bar"];
         let query = Query {
@@ -498,27 +435,13 @@ mod tests {
 
     #[bench]
     fn bench_query_with_empty_where(b: &mut Bencher) {
-        let order_by_bar_desc = OrderBy {
-            ordering: Ordering::Descending,
-            order_by: "bar"
-        };
+        let order_by_bar_desc = OrderBy { ordering: Ordering::Descending, order_by: "bar" };
 
-        let order_by_foo_asc = OrderBy {
-            ordering: Ordering::Ascending,
-            order_by: "foo"
-        };
+        let order_by_foo_asc = OrderBy { ordering: Ordering::Ascending, order_by: "foo" };
 
-        let bar_join = Join {
-            join_type: JoinType::Inner,
-            target: "bar_table",
-            clause: "1 == 1"
-        };
+        let bar_join = Join { join_type: JoinType::Inner, target: "bar_table", clause: "1 == 1" };
 
-        let bazz_join = Join {
-            join_type: JoinType::Left,
-            target: "bazz_table",
-            clause: "2 == 2"
-        };
+        let bazz_join = Join { join_type: JoinType::Left, target: "bazz_table", clause: "2 == 2" };
 
         let clauses = ["foo", "bar"];
         let query = Query {

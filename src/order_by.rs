@@ -1,3 +1,4 @@
+
 pub enum Ordering {
     Ascending,
     Descending,
@@ -14,7 +15,7 @@ impl Ordering {
 
 pub struct OrderBy<'a> {
     pub ordering: Ordering,
-    pub order_by: &'a str
+    pub order_by: &'a str,
 }
 
 impl<'a> OrderBy<'a> {
@@ -42,10 +43,7 @@ mod tests {
 
     #[test]
     fn test_order_by() {
-        let order_by = OrderBy {
-            ordering: Ordering::Ascending,
-            order_by: "fizz"
-        };
+        let order_by = OrderBy { ordering: Ordering::Ascending, order_by: "fizz" };
         assert_eq!(order_by.to_sql(), "fizz ASC")
     }
 }

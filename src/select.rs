@@ -1,6 +1,7 @@
+
 pub enum SelectType<'a> {
     All,
-    Specific(&'a [&'a str])
+    Specific(&'a [&'a str]),
 }
 
 impl<'a> SelectType<'a> {
@@ -37,4 +38,3 @@ mod tests {
         assert_eq!(select.to_sql(), "foo, bar".to_string());
     }
 }
-
