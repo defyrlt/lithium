@@ -30,13 +30,16 @@ impl<'a> Query<'a> {
             rv.push_str(&join.to_sql());
         }
 
+        let where_string = " WHERE ";
         match self.where_cl {
             WhereType::Empty => {},
-            _ => {
-                rv.push(' ');
-                rv.push_str("WHERE");
-                rv.push(' ');
-                rv.push_str(&self.where_cl.to_sql());
+            WhereType::Simple(clause) => {
+                rv.push_str(where_string);
+                rv.push_str(&clause.to_sql());
+            },
+            WhereType::Extended(clause) => {
+                rv.push_str(where_string);
+                rv.push_str(&clause.to_sql());
             }
         }
 

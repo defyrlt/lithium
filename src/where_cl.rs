@@ -53,35 +53,10 @@ pub enum WhereType<'a> {
     Empty
 }
 
-impl<'a> WhereType<'a> {
-    pub fn to_sql(&self) -> String {
-        match *self {
-            WhereType::Simple(string) => string.to_sql(),
-            WhereType::Extended(clause) => clause.to_sql(),
-            WhereType::Empty => String::new()
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{Operator, ToSQL, WhereType, Where};
 
-    #[test]
-    fn test_where_types() {
-        let foo = Where {
-            operator: Operator::And,
-            clause: &["foo=bar", "lala=blah"]
-        };
-
-        let extended_where = WhereType::Extended(&foo);
-        let extended_string = WhereType::Simple("fizz=bazz");
-        let empty = WhereType::Empty;
-
-        assert_eq!(extended_string.to_sql(), "fizz=bazz".to_string());
-        assert_eq!(extended_where.to_sql(), "(foo=bar AND lala=blah)".to_string());
-        assert_eq!(empty.to_sql().is_empty(), true);
-    }
 
     #[test]
     fn test_operator() {
