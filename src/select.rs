@@ -8,7 +8,7 @@ impl<'a> SelectType<'a> {
     pub fn to_sql(&self) -> String {
         match *self {
             SelectType::All => "*".to_string(),
-            SelectType::Specific(clauses) => clauses.connect(", ")
+            SelectType::Specific(clauses) => clauses.join(", ")
         }
     }
 }
