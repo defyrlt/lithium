@@ -10,7 +10,8 @@ pub struct Query<'a> {
     pub joins: &'a [Join<'a>],
     pub group_by: &'a [&'a str],
     pub order_by: &'a [OrderBy<'a>],
-    pub where_cl: WhereType<'a>
+    pub where_cl: WhereType<'a>,
+    pub having: WhereType<'a>
 }
 
 
@@ -49,6 +50,19 @@ impl<'a> Query<'a> {
             rv.push(' ');
             rv.push_str(&self.group_by.join(", "));
         }
+
+        let having_string = " HAVING ";
+        match self.having {
+            WhereType::Empty => {},
+            WhereType::Simple(clause) => {
+                rv.push_str(having_string);
+                rv.push_str(&clause.to_sql());
+            },
+            WhereType::Extended(clause) => {
+                rv.push_str(having_string);
+                rv.push_str(&clause.to_sql());
+            }
+        }
         
         if !self.order_by.is_empty() {
             rv.push(' ');
@@ -85,7 +99,8 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table;".to_string());
     }
@@ -99,7 +114,8 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -113,7 +129,8 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -128,7 +145,8 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -147,7 +165,8 @@ mod tests {
             joins: &[join],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
 
         let test_sql_string = {
@@ -178,7 +197,8 @@ mod tests {
             joins: &[bar_join, bazz_join],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
 
         let test_sql_string = {
@@ -198,7 +218,8 @@ mod tests {
             joins: &[],
             group_by: &["foo"],
             order_by: &[],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
 
         let test_sql_string = {
@@ -217,7 +238,8 @@ mod tests {
             joins: &[],
             group_by: &["foo", "bar"],
             order_by: &[],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
 
         let test_sql_string = {
@@ -241,7 +263,8 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[order_by_foo_asc],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
 
         let test_sql_string = {
@@ -270,7 +293,8 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[order_by_foo_asc, order_by_bar_desc],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
 
         let test_sql_string = {
@@ -289,13 +313,14 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Simple("foo=bar")
+            where_cl: WhereType::Simple("foo == bar"),
+            having: WhereType::Empty,
         };
 
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            WHERE foo=bar;".to_string()
+            WHERE foo == bar;".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -304,7 +329,7 @@ mod tests {
     fn select_all_where_extended() {
         let where_cl = Where {
             operator: Operator::And,
-            clause: &["foo=bar", "lala=blah"]
+            clause: &["foo == bar", "lala == blah"]
         };
 
         let query = Query {
@@ -313,22 +338,73 @@ mod tests {
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Extended(&where_cl)
+            where_cl: WhereType::Extended(&where_cl),
+            having: WhereType::Empty,
         };
 
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            WHERE (foo=bar AND lala=blah);".to_string()
+            WHERE (foo == bar AND lala == blah);".to_string()
         };
-        assert_eq!(query.to_sql(), test_sql_string)
+        assert_eq!(query.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn select_all_with_having() {
+        let where_cl = Where {
+            operator: Operator::And,
+            clause: &["foo == bar", "lala == blah"]
+        };
+
+        let query = Query {
+            select: SelectType::All,
+            from: "test_table",
+            joins: &[],
+            group_by: &[],
+            order_by: &[],
+            where_cl: WhereType::Empty,
+            having: WhereType::Simple("foo == bar")
+        };
+
+        let test_sql_string = {
+            "SELECT * \
+            FROM test_table \
+            HAVING foo == bar;".to_string()
+        };
+        assert_eq!(query.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn select_all_with_extended_having() {
+        let where_cl = Where {
+            operator: Operator::And,
+            clause: &["foo == bar", "lala == blah"]
+        };
+
+        let query = Query {
+            select: SelectType::All,
+            from: "test_table",
+            joins: &[],
+            group_by: &[],
+            order_by: &[],
+            where_cl: WhereType::Empty,
+            having: WhereType::Extended(&where_cl),
+        };
+
+        let test_sql_string = {
+            "SELECT * \
+            FROM test_table \
+            HAVING (foo == bar AND lala == blah);".to_string()
+        };
+        assert_eq!(query.to_sql(), test_sql_string);
     }
 
     #[test]
     fn test_complex() {
         let where_cl = Where {
             operator: Operator::And,
-            clause: &["foo=bar", "lala=blah"]
+            clause: &["foo == bar", "lala == blah"]
         };
 
         let order_by_bar_desc = OrderBy {
@@ -360,7 +436,8 @@ mod tests {
             joins: &[bar_join, bazz_join],
             group_by: &["foo", "bar"],
             order_by: &[order_by_bar_desc, order_by_foo_asc],
-            where_cl: WhereType::Extended(&where_cl)
+            where_cl: WhereType::Extended(&where_cl),
+            having: WhereType::Extended(&where_cl)
         };
 
         let test_sql_string = {
@@ -368,8 +445,9 @@ mod tests {
             FROM test_table \
             INNER JOIN bar_table ON 1 == 1 \
             LEFT JOIN bazz_table ON 2 == 2 \
-            WHERE (foo=bar AND lala=blah) \
+            WHERE (foo == bar AND lala == blah) \
             GROUP BY foo, bar \
+            HAVING (foo == bar AND lala == blah) \
             ORDER BY bar DESC, foo ASC;".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
@@ -379,7 +457,7 @@ mod tests {
     fn bench_query_with_extended_where(b: &mut Bencher) {
         let where_cl = Where {
             operator: Operator::And,
-            clause: &["foo=bar", "lala=blah"]
+            clause: &["foo == bar", "lala == blah"]
         };
 
         let order_by_bar_desc = OrderBy {
@@ -411,10 +489,11 @@ mod tests {
             joins: &[bar_join, bazz_join],
             group_by: &["foo", "bar"],
             order_by: &[order_by_bar_desc, order_by_foo_asc],
-            where_cl: WhereType::Extended(&where_cl)
+            where_cl: WhereType::Extended(&where_cl),
+            having: WhereType::Empty,
         };
 
-        b.iter(|| query.to_sql())
+        b.iter(|| query.to_sql());
     }
 
     #[bench]
@@ -448,9 +527,10 @@ mod tests {
             joins: &[bar_join, bazz_join],
             group_by: &["foo", "bar"],
             order_by: &[order_by_bar_desc, order_by_foo_asc],
-            where_cl: WhereType::Empty
+            where_cl: WhereType::Empty,
+            having: WhereType::Empty,
         };
 
-        b.iter(|| query.to_sql())
+        b.iter(|| query.to_sql());
     }
 }
