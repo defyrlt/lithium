@@ -3,17 +3,15 @@ use join::Join;
 use order_by::OrderBy;
 use where_cl::{ToSQL, WhereType};
 
-
 pub struct Query<'a> {
     pub select: SelectType<'a>,
     pub from: &'a str,
-    pub joins: &'a [Join<'a>],
+    pub joins: &'a [&'a Join<'a>],
     pub group_by: &'a [&'a str],
-    pub order_by: &'a [OrderBy<'a>],
+    pub order_by: &'a [&'a OrderBy<'a>],
     pub where_cl: WhereType<'a>,
     pub having: WhereType<'a>
 }
-
 
 impl<'a> Query<'a> {
     fn to_sql(&self) -> String {
@@ -162,7 +160,7 @@ mod tests {
         let query = Query {
             select: SelectType::All,
             from: "test_table",
-            joins: &[join],
+            joins: &[&join],
             group_by: &[],
             order_by: &[],
             where_cl: WhereType::Empty,
@@ -194,7 +192,7 @@ mod tests {
         let query = Query {
             select: SelectType::All,
             from: "test_table",
-            joins: &[bar_join, bazz_join],
+            joins: &[&bar_join, &bazz_join],
             group_by: &[],
             order_by: &[],
             where_cl: WhereType::Empty,
@@ -262,7 +260,7 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[order_by_foo_asc],
+            order_by: &[&order_by_foo_asc],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
         };
@@ -292,7 +290,7 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[order_by_foo_asc, order_by_bar_desc],
+            order_by: &[&order_by_foo_asc, &order_by_bar_desc],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
         };
@@ -433,9 +431,9 @@ mod tests {
         let query = Query {
             select: SelectType::Specific(&clauses),
             from: "test_table",
-            joins: &[bar_join, bazz_join],
+            joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
-            order_by: &[order_by_bar_desc, order_by_foo_asc],
+            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
             where_cl: WhereType::Extended(&where_cl),
             having: WhereType::Extended(&where_cl)
         };
@@ -486,9 +484,9 @@ mod tests {
         let query = Query {
             select: SelectType::Specific(&clauses),
             from: "test_table",
-            joins: &[bar_join, bazz_join],
+            joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
-            order_by: &[order_by_bar_desc, order_by_foo_asc],
+            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
             where_cl: WhereType::Extended(&where_cl),
             having: WhereType::Empty,
         };
@@ -524,9 +522,9 @@ mod tests {
         let query = Query {
             select: SelectType::Specific(&clauses),
             from: "test_table",
-            joins: &[bar_join, bazz_join],
+            joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
-            order_by: &[order_by_bar_desc, order_by_foo_asc],
+            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
         };
