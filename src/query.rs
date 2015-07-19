@@ -3,19 +3,19 @@ use join::Join;
 use order_by::OrderBy;
 use where_cl::{ToSQL, WhereType};
 use distinct::DistinctType;
-
+use limit::LimitType;
 
 pub struct Query<'a> {
     pub select: SelectType<'a>,
     pub distinct: DistinctType<'a>,
     pub from: &'a str,
-    pub joins: &'a [Join<'a>],
+    pub joins: &'a [&'a Join<'a>],
     pub group_by: &'a [&'a str],
-    pub order_by: &'a [OrderBy<'a>],
+    pub order_by: &'a [&'a OrderBy<'a>],
     pub where_cl: WhereType<'a>,
-    pub having: WhereType<'a>
+    pub having: WhereType<'a>,
+    pub limit: LimitType<'a>
 }
-
 
 impl<'a> Query<'a> {
     fn to_sql(&self) -> String {
@@ -94,6 +94,16 @@ impl<'a> Query<'a> {
                         .join(", "));
         }
 
+        match self.limit {
+            LimitType::Empty => {},
+            LimitType::Specified(clause) => {
+                rv.push(' ');
+                rv.push_str("LIMIT");
+                rv.push(' ');
+                rv.push_str(clause);
+            }
+        }
+
         rv.push(';');
         rv
     }
@@ -110,6 +120,7 @@ mod tests {
     use order_by::{Ordering, OrderBy};
     use where_cl::{Operator, ToSQL, WhereType, Where};
     use distinct::DistinctType;
+    use limit::LimitType;
 
     #[test]
     fn select_all() {
@@ -122,6 +133,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table;".to_string());
     }
@@ -138,6 +150,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -154,6 +167,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -171,6 +185,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -187,11 +202,12 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[join],
+            joins: &[&join],
             group_by: &[],
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -220,11 +236,12 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[bar_join, bazz_join],
+            joins: &[&bar_join, &bazz_join],
             group_by: &[],
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -247,6 +264,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -268,6 +286,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -291,9 +310,10 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[order_by_foo_asc],
+            order_by: &[&order_by_foo_asc],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -322,9 +342,10 @@ mod tests {
             from: "test_table",
             joins: &[],
             group_by: &[],
-            order_by: &[order_by_foo_asc, order_by_bar_desc],
+            order_by: &[&order_by_foo_asc, &order_by_bar_desc],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -346,6 +367,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Simple("foo == bar"),
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -372,6 +394,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Extended(&where_cl),
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -397,7 +420,8 @@ mod tests {
             group_by: &[],
             order_by: &[],
             where_cl: WhereType::Empty,
-            having: WhereType::Simple("foo == bar")
+            having: WhereType::Simple("foo == bar"),
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -424,6 +448,7 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Extended(&where_cl),
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -510,11 +535,12 @@ mod tests {
             select: SelectType::Specific(&clauses),
             distinct: DistinctType::Extended(&distinct_fields),
             from: "test_table",
-            joins: &[bar_join, bazz_join],
+            joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
-            order_by: &[order_by_bar_desc, order_by_foo_asc],
+            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
             where_cl: WhereType::Extended(&where_cl),
-            having: WhereType::Extended(&where_cl)
+            having: WhereType::Extended(&where_cl),
+            limit: LimitType::Specified("10")
         };
 
         let test_sql_string = {
@@ -525,7 +551,8 @@ mod tests {
             WHERE (foo == bar AND lala == blah) \
             GROUP BY foo, bar \
             HAVING (foo == bar AND lala == blah) \
-            ORDER BY bar DESC, foo ASC;".to_string()
+            ORDER BY bar DESC, foo ASC \
+            LIMIT 10;".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -564,11 +591,12 @@ mod tests {
             select: SelectType::Specific(&clauses),
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[bar_join, bazz_join],
+            joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
-            order_by: &[order_by_bar_desc, order_by_foo_asc],
+            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
             where_cl: WhereType::Extended(&where_cl),
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         b.iter(|| query.to_sql());
@@ -603,11 +631,12 @@ mod tests {
             select: SelectType::Specific(&clauses),
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[bar_join, bazz_join],
+            joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
-            order_by: &[order_by_bar_desc, order_by_foo_asc],
+            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         b.iter(|| query.to_sql());
