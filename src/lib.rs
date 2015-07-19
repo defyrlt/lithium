@@ -6,3 +6,4 @@ mod order_by;
 mod where_cl;
 mod distinct;
 mod limit;
+mod offset;
