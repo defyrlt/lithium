@@ -469,7 +469,8 @@ mod tests {
             group_by: &[],
             order_by: &[],
             where_cl: WhereType::Empty,
-            having: WhereType::Empty
+            having: WhereType::Empty,
+            limit: LimitType::Empty,
         };
 
         let test_sql_string = {
@@ -490,7 +491,8 @@ mod tests {
             group_by: &[],
             order_by: &[],
             where_cl: WhereType::Empty,
-            having: WhereType::Empty
+            having: WhereType::Empty,
+            limit: LimitType::Empty
         };
 
         let test_sql_string = {
