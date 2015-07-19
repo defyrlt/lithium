@@ -4,6 +4,7 @@ use order_by::OrderBy;
 use where_cl::{ToSQL, WhereType};
 use distinct::DistinctType;
 use limit::LimitType;
+use offset::OffsetType;
 
 pub struct Query<'a> {
     pub select: SelectType<'a>,
@@ -14,7 +15,8 @@ pub struct Query<'a> {
     pub order_by: &'a [&'a OrderBy<'a>],
     pub where_cl: WhereType<'a>,
     pub having: WhereType<'a>,
-    pub limit: LimitType<'a>
+    pub limit: LimitType<'a>,
+    pub offset: OffsetType<'a>
 }
 
 impl<'a> Query<'a> {
@@ -104,6 +106,16 @@ impl<'a> Query<'a> {
             }
         }
 
+        match self.offset {
+            OffsetType::Empty => {},
+            OffsetType::Specified(clause) => {
+                rv.push(' ');
+                rv.push_str("OFFSET");
+                rv.push(' ');
+                rv.push_str(clause);
+            }
+        }
+
         rv.push(';');
         rv
     }
@@ -121,6 +133,7 @@ mod tests {
     use where_cl::{Operator, ToSQL, WhereType, Where};
     use distinct::DistinctType;
     use limit::LimitType;
+    use offset::OffsetType;
 
     #[test]
     fn select_all() {
@@ -134,6 +147,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table;".to_string());
     }
@@ -151,6 +165,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -168,6 +183,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -186,6 +202,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
     }
@@ -208,6 +225,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -242,6 +260,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -265,6 +284,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -287,6 +307,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -314,6 +335,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -346,6 +368,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -368,6 +391,7 @@ mod tests {
             where_cl: WhereType::Simple("foo == bar"),
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -395,6 +419,7 @@ mod tests {
             where_cl: WhereType::Extended(&where_cl),
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -422,6 +447,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Simple("foo == bar"),
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -449,6 +475,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Extended(&where_cl),
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -471,6 +498,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -492,7 +520,8 @@ mod tests {
             order_by: &[],
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
-            limit: LimitType::Empty
+            limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         let test_sql_string = {
@@ -542,7 +571,8 @@ mod tests {
             order_by: &[&order_by_bar_desc, &order_by_foo_asc],
             where_cl: WhereType::Extended(&where_cl),
             having: WhereType::Extended(&where_cl),
-            limit: LimitType::Specified("10")
+            limit: LimitType::Specified("10"),
+            offset: OffsetType::Specified("5")
         };
 
         let test_sql_string = {
@@ -554,7 +584,8 @@ mod tests {
             GROUP BY foo, bar \
             HAVING (foo == bar AND lala == blah) \
             ORDER BY bar DESC, foo ASC \
-            LIMIT 10;".to_string()
+            LIMIT 10 \
+            OFFSET 5;".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -599,6 +630,7 @@ mod tests {
             where_cl: WhereType::Extended(&where_cl),
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty,
         };
 
         b.iter(|| query.to_sql());
@@ -639,6 +671,7 @@ mod tests {
             where_cl: WhereType::Empty,
             having: WhereType::Empty,
             limit: LimitType::Empty,
+            offset: OffsetType::Empty
         };
 
         b.iter(|| query.to_sql());
