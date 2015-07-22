@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub enum ForMode {
     Update,
     Share
@@ -40,6 +41,7 @@ impl<'a> For<'a> {
     }
 }
 
+#[allow(dead_code)]
 pub enum ForType<'a> {
     Empty,
     Specified(&'a For<'a>)

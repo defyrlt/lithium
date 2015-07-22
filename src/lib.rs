@@ -1,3 +1,4 @@
+#![allow(unused_features)]
 #![feature(test)]
 mod query;
 mod select;
@@ -8,3 +9,4 @@ mod distinct;
 mod limit;
 mod offset;
 mod for_cl;
+mod union;

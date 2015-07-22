@@ -1,4 +1,5 @@
 // TODO: add cross join
+#[allow(dead_code)]
 pub enum JoinType {
     Inner,
     Left,

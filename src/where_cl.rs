@@ -1,3 +1,6 @@
+use query::ToSQL;
+
+#[allow(dead_code)]
 pub enum Operator {
     And,
     Or
@@ -12,10 +15,7 @@ impl Operator {
     }
 }
 
-pub trait ToSQL {
-    fn to_sql(&self) -> String;
-}
-
+#[allow(dead_code)]
 pub struct Where<'a, T: 'a + ToSQL> {
     pub operator: Operator,
     pub clause: &'a [T]
@@ -47,6 +47,7 @@ impl<'a, T: ToSQL> ToSQL for &'a Where<'a, T>{
     }
 }
 
+#[allow(dead_code)]
 pub enum WhereType<'a> {
     Simple(&'a str),
     Extended(&'a ToSQL),
@@ -55,7 +56,8 @@ pub enum WhereType<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Operator, ToSQL, WhereType, Where};
+    use super::{Operator, Where};
+    use query::ToSQL;
 
 
     #[test]
