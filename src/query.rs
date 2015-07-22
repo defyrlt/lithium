@@ -1,12 +1,17 @@
 use select::SelectType;
 use join::Join;
 use order_by::OrderBy;
-use where_cl::{ToSQL, WhereType};
+use where_cl::WhereType;
 use distinct::DistinctType;
 use limit::LimitType;
 use offset::OffsetType;
-use for_cl::{ForMode, For, ForType};
+use for_cl::ForType;
 
+pub trait ToSQL {
+    fn to_sql(&self) -> String;
+}
+
+#[allow(dead_code)]
 pub struct Query<'a> {
     pub select: SelectType<'a>,
     pub distinct: DistinctType<'a>,
@@ -21,7 +26,7 @@ pub struct Query<'a> {
     pub for_cl: ForType<'a>
 }
 
-impl<'a> Query<'a> {
+impl<'a> ToSQL for Query<'a> {
     fn to_sql(&self) -> String {
         let mut rv = String::new();
         rv.push_str("SELECT");
@@ -126,21 +131,27 @@ impl<'a> Query<'a> {
             }
         }
 
-        rv.push(';');
         rv
+    }
+}
+
+impl<'a> ToSQL for &'a Query<'a> {
+    fn to_sql(&self) -> String {
+        (**self).to_sql()
     }
 }
 
 #[cfg(test)]
 mod tests {
     extern crate test;
+
     use self::test::Bencher;
 
-    use super::Query;
+    use super::{ToSQL, Query};
     use select::SelectType;
     use join::{JoinType, Join};
     use order_by::{Ordering, OrderBy};
-    use where_cl::{Operator, ToSQL, WhereType, Where};
+    use where_cl::{Operator, WhereType, Where};
     use distinct::DistinctType;
     use limit::LimitType;
     use offset::OffsetType;
@@ -161,7 +172,7 @@ mod tests {
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
-        assert_eq!(query.to_sql(), "SELECT * FROM test_table;".to_string());
+        assert_eq!(query.to_sql(), "SELECT * FROM test_table".to_string());
     }
 
     #[test]
@@ -180,7 +191,7 @@ mod tests {
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
-        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
+        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
     }
 
     #[test]
@@ -199,7 +210,7 @@ mod tests {
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
-        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
+        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
     }
 
 
@@ -219,7 +230,7 @@ mod tests {
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
-        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table;".to_string());
+        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
     }
 
     #[test]
@@ -247,7 +258,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            INNER JOIN target_table ON 2 == 2;".to_string()
+            INNER JOIN target_table ON 2 == 2".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -284,7 +295,7 @@ mod tests {
             "SELECT * \
             FROM test_table \
             INNER JOIN bar_table ON 1 == 1 \
-            LEFT JOIN bazz_table ON 2 == 2;".to_string()
+            LEFT JOIN bazz_table ON 2 == 2".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -308,7 +319,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            GROUP BY foo;".to_string()
+            GROUP BY foo".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -332,7 +343,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            GROUP BY foo, bar;".to_string()
+            GROUP BY foo, bar".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -361,7 +372,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            ORDER BY foo ASC;".to_string()
+            ORDER BY foo ASC".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -395,7 +406,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            ORDER BY foo ASC, bar DESC;".to_string()
+            ORDER BY foo ASC, bar DESC".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -419,7 +430,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            WHERE foo == bar;".to_string()
+            WHERE foo == bar".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -448,18 +459,13 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            WHERE (foo == bar AND lala == blah);".to_string()
+            WHERE (foo == bar AND lala == blah)".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
     #[test]
     fn select_all_with_having() {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
-
         let query = Query {
             select: SelectType::All,
             distinct: DistinctType::Empty,
@@ -477,7 +483,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            HAVING foo == bar;".to_string()
+            HAVING foo == bar".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -506,7 +512,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            HAVING (foo == bar AND lala == blah);".to_string()
+            HAVING (foo == bar AND lala == blah)".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -529,7 +535,7 @@ mod tests {
 
         let test_sql_string = {
             "SELECT DISTINCT * \
-            FROM test_table;".to_string()
+            FROM test_table".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -553,7 +559,7 @@ mod tests {
 
         let test_sql_string = {
             "SELECT DISTINCT ON (foo, bar) * \
-            FROM test_table;".to_string()
+            FROM test_table".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -583,11 +589,12 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            FOR UPDATE;".to_string()
+            FOR UPDATE".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
+    #[test]
     fn select_all_for_update_clause() {
         let for_foo = For {
             mode: ForMode::Update,
@@ -612,7 +619,7 @@ mod tests {
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            FOR UPDATE OF foo, bar;".to_string()
+            FOR UPDATE OF foo, bar".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }
@@ -679,7 +686,7 @@ mod tests {
             ORDER BY bar DESC, foo ASC \
             LIMIT 10 \
             OFFSET 5 \
-            FOR UPDATE OF foo, bar NOWAIT;".to_string()
+            FOR UPDATE OF foo, bar NOWAIT".to_string()
         };
         assert_eq!(query.to_sql(), test_sql_string);
     }

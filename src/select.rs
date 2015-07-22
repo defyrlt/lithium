@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub enum SelectType<'a> {
     All,
     Specific(&'a [&'a str])
