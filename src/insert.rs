@@ -1,10 +1,10 @@
-use query::ToSQL;
+use query::{ToSQL, Query};
 
 #[allow(dead_code)]
 pub enum Values<'a> {
     Default,
     Specified(&'a [&'a str]),
-    Query(&'a ToSQL)
+    Query(&'a Query<'a>)
 }
 
 #[allow(dead_code)]
