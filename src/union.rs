@@ -51,17 +51,17 @@ mod tests {
     #[test]
     fn test_simple() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let union = Union {
@@ -81,17 +81,17 @@ mod tests {
     #[test]
     fn test_union_all() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let union = Union {
@@ -111,17 +111,17 @@ mod tests {
     #[test]
     fn test_nested() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let pre_union = Union {

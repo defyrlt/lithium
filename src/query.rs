@@ -13,17 +13,17 @@ pub trait ToSQL {
 
 #[allow(dead_code)]
 pub struct Query<'a> {
-    pub select: SelectType<'a>,
-    pub distinct: DistinctType<'a>,
+    pub select: &'a SelectType<'a>,
+    pub distinct: &'a DistinctType<'a>,
     pub from: &'a str,
-    pub joins: &'a [&'a Join<'a>],
+    pub joins: &'a [Join<'a>],
     pub group_by: &'a [&'a str],
     pub order_by: &'a [&'a OrderBy<'a>],
-    pub where_cl: WhereType<'a>,
-    pub having: WhereType<'a>,
-    pub limit: LimitType<'a>,
-    pub offset: OffsetType<'a>,
-    pub for_cl: ForType<'a>
+    pub where_cl: &'a WhereType<'a>,
+    pub having: &'a WhereType<'a>,
+    pub limit: &'a LimitType<'a>,
+    pub offset: &'a OffsetType<'a>,
+    pub for_cl: &'a ForType<'a>
 }
 
 impl<'a> ToSQL for Query<'a> {
@@ -31,7 +31,7 @@ impl<'a> ToSQL for Query<'a> {
         let mut rv = String::new();
         rv.push_str("SELECT");
 
-        match self.distinct {
+        match *self.distinct {
             DistinctType::Empty => {},
             DistinctType::Simple => {
                 rv.push(' ');
@@ -60,7 +60,7 @@ impl<'a> ToSQL for Query<'a> {
         }
 
         let where_string = " WHERE ";
-        match self.where_cl {
+        match *self.where_cl {
             WhereType::Empty => {},
             WhereType::Simple(clause) => {
                 rv.push_str(where_string);
@@ -80,7 +80,7 @@ impl<'a> ToSQL for Query<'a> {
         }
 
         let having_string = " HAVING ";
-        match self.having {
+        match *self.having {
             WhereType::Empty => {},
             WhereType::Simple(clause) => {
                 rv.push_str(having_string);
@@ -103,7 +103,7 @@ impl<'a> ToSQL for Query<'a> {
                         .join(", "));
         }
 
-        match self.limit {
+        match *self.limit {
             LimitType::Empty => {},
             LimitType::Specified(clause) => {
                 rv.push(' ');
@@ -113,7 +113,7 @@ impl<'a> ToSQL for Query<'a> {
             }
         }
 
-        match self.offset {
+        match *self.offset {
             OffsetType::Empty => {},
             OffsetType::Specified(clause) => {
                 rv.push(' ');
@@ -123,7 +123,7 @@ impl<'a> ToSQL for Query<'a> {
             }
         }
 
-        match self.for_cl {
+        match *self.for_cl {
             ForType::Empty => {},
             ForType::Specified(for_clause) => {
                 rv.push(' ');
@@ -160,17 +160,17 @@ mod tests {
     #[test]
     fn select_all() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT * FROM test_table".to_string());
     }
@@ -179,17 +179,17 @@ mod tests {
     fn select_foo_and_bar() {
         let clauses = &["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(clauses),
-            distinct: DistinctType::Empty,
+            select: &SelectType::Specific(clauses),
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
     }
@@ -198,17 +198,17 @@ mod tests {
     fn select_foo_and_bar_with_vec_params() {
         let clauses = vec!["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
-            distinct: DistinctType::Empty,
+            select: &SelectType::Specific(&clauses),
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
     }
@@ -218,17 +218,17 @@ mod tests {
     fn select_foo_and_bar_with_vec_params_and_strings() {
         let clauses = vec!["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
-            distinct: DistinctType::Empty,
+            select: &SelectType::Specific(&clauses),
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
     }
@@ -242,17 +242,17 @@ mod tests {
         };
 
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[&join],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -278,17 +278,17 @@ mod tests {
         };
 
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[&bar_join, &bazz_join],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -303,17 +303,17 @@ mod tests {
     #[test]
     fn select_all_and_group_by_foo() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &["foo"],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -327,17 +327,17 @@ mod tests {
     #[test]
     fn select_all_and_group_by_foo_and_bar() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &["foo", "bar"],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -356,17 +356,17 @@ mod tests {
         };
 
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[&order_by_foo_asc],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -390,17 +390,17 @@ mod tests {
         };
 
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[&order_by_foo_asc, &order_by_bar_desc],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -414,17 +414,17 @@ mod tests {
     #[test]
     fn select_all_where_simple() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Simple("foo == bar"),
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Simple("foo == bar"),
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -443,17 +443,17 @@ mod tests {
         };
 
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Extended(&where_cl),
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Extended(&where_cl),
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -467,17 +467,17 @@ mod tests {
     #[test]
     fn select_all_with_having() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Simple("foo == bar"),
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Simple("foo == bar"),
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -496,17 +496,17 @@ mod tests {
         };
 
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Extended(&where_cl),
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Extended(&where_cl),
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -520,17 +520,17 @@ mod tests {
     #[test]
     fn select_all_distinct_simple() {
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Simple,
+            select: &SelectType::All,
+            distinct: &DistinctType::Simple,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -544,17 +544,17 @@ mod tests {
     fn select_all_distinct_extended() {
         let distinct_fields = ["foo", "bar"];
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Extended(&distinct_fields),
+            select: &SelectType::All,
+            distinct: &DistinctType::Extended(&distinct_fields),
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         let test_sql_string = {
@@ -573,17 +573,17 @@ mod tests {
         };
 
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Specified(&for_foo)
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Specified(&for_foo)
         };
 
         let test_sql_string = {
@@ -603,17 +603,17 @@ mod tests {
         };
 
         let query = Query {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
+            select: &SelectType::All,
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[],
             group_by: &[],
             order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Specified(&for_foo)
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Specified(&for_foo)
         };
 
         let test_sql_string = {
@@ -662,17 +662,17 @@ mod tests {
         let clauses = ["foo", "bar"];
         let distinct_fields = ["fizz", "bazz"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
-            distinct: DistinctType::Extended(&distinct_fields),
+            select: &SelectType::Specific(&clauses),
+            distinct: &DistinctType::Extended(&distinct_fields),
             from: "test_table",
             joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
             order_by: &[&order_by_bar_desc, &order_by_foo_asc],
-            where_cl: WhereType::Extended(&where_cl),
-            having: WhereType::Extended(&where_cl),
-            limit: LimitType::Specified("10"),
-            offset: OffsetType::Specified("5"),
-            for_cl: ForType::Specified(&for_bazz)
+            where_cl: &WhereType::Extended(&where_cl),
+            having: &WhereType::Extended(&where_cl),
+            limit: &LimitType::Specified("10"),
+            offset: &OffsetType::Specified("5"),
+            for_cl: &ForType::Specified(&for_bazz)
         };
 
         let test_sql_string = {
@@ -722,17 +722,17 @@ mod tests {
 
         let clauses = ["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
-            distinct: DistinctType::Empty,
+            select: &SelectType::Specific(&clauses),
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
             order_by: &[&order_by_bar_desc, &order_by_foo_asc],
-            where_cl: WhereType::Extended(&where_cl),
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Extended(&where_cl),
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         b.iter(|| query.to_sql());
@@ -764,17 +764,17 @@ mod tests {
 
         let clauses = ["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
-            distinct: DistinctType::Empty,
+            select: &SelectType::Specific(&clauses),
+            distinct: &DistinctType::Empty,
             from: "test_table",
             joins: &[&bar_join, &bazz_join],
             group_by: &["foo", "bar"],
             order_by: &[&order_by_bar_desc, &order_by_foo_asc],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
+            where_cl: &WhereType::Empty,
+            having: &WhereType::Empty,
+            limit: &LimitType::Empty,
+            offset: &OffsetType::Empty,
+            for_cl: &ForType::Empty
         };
 
         b.iter(|| query.to_sql());
