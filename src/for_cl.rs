@@ -15,7 +15,7 @@ impl ForMode {
 
 pub struct For<'a> {
     pub mode: ForMode,
-    pub tables: &'a [&'a str],
+    pub tables: Vec<&'a str>,
     pub nowait: bool,
 }
 
@@ -44,7 +44,7 @@ impl<'a> For<'a> {
 #[allow(dead_code)]
 pub enum ForType<'a> {
     Empty,
-    Specified(&'a For<'a>)
+    Specified(For<'a>)
 }
 
 #[cfg(test)]
@@ -64,7 +64,7 @@ mod tests {
     fn test_for() {
         let for_cl = For {
             mode: ForMode::Update,
-            tables: &[],
+            tables: vec![],
             nowait: false
         };
 
@@ -75,7 +75,7 @@ mod tests {
     fn test_for_with_clause() {
         let for_cl = For {
             mode: ForMode::Share,
-            tables: &["foo", "bar"],
+            tables: vec!["foo", "bar"],
             nowait: false
         };
 
@@ -86,7 +86,7 @@ mod tests {
     fn test_for_with_clause_and_nowait() {
         let for_cl = For {
             mode: ForMode::Update,
-            tables: &["foo", "bar"],
+            tables: vec!["foo", "bar"],
             nowait: true
         };
 

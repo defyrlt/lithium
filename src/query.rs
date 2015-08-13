@@ -16,11 +16,11 @@ pub struct Query<'a> {
     pub select: SelectType<'a>,
     pub distinct: DistinctType<'a>,
     pub from: &'a str,
-    pub joins: &'a [&'a Join<'a>],
-    pub group_by: &'a [&'a str],
-    pub order_by: &'a [&'a OrderBy<'a>],
-    pub where_cl: WhereType<'a>,
-    pub having: WhereType<'a>,
+    pub joins: Vec<Join<'a>>,
+    pub group_by: Vec<&'a str>,
+    pub order_by: Vec<OrderBy<'a>>,
+    pub where_cl: Vec<WhereType<'a>>,
+    pub having: Vec<WhereType<'a>>,
     pub limit: LimitType<'a>,
     pub offset: OffsetType<'a>,
     pub for_cl: ForType<'a>
@@ -37,12 +37,12 @@ impl<'a> ToSQL for Query<'a> {
                 rv.push(' ');
                 rv.push_str("DISTINCT");
             },
-            DistinctType::Extended(clause) => {
+            DistinctType::Extended(ref clauses) => {
                 rv.push(' ');
                 rv.push_str("DISTINCT ON");
                 rv.push(' ');
                 rv.push('(');
-                rv.push_str(&clause.join(", "));
+                rv.push_str(&clauses.join(", "));
                 rv.push(')');
             }
         }
@@ -54,22 +54,19 @@ impl<'a> ToSQL for Query<'a> {
         rv.push(' ');
         rv.push_str(self.from);
         
-        for join in self.joins {
+        for join in &self.joins {
             rv.push(' ');
             rv.push_str(&join.to_sql());
         }
 
-        let where_string = " WHERE ";
-        match self.where_cl {
-            WhereType::Empty => {},
-            WhereType::Simple(clause) => {
-                rv.push_str(where_string);
-                rv.push_str(&clause.to_sql());
-            },
-            WhereType::Extended(clause) => {
-                rv.push_str(where_string);
-                rv.push_str(&clause.to_sql());
-            }
+        if !self.where_cl.is_empty() {
+           rv.push(' ');
+           rv.push_str("WHERE");
+           rv.push(' ');
+           rv.push_str(&self.where_cl.iter()
+                       .map(|x| x.to_sql())
+                       .collect::<Vec<_>>()
+                       .join("AND"));
         }
 
         if !self.group_by.is_empty() {
@@ -79,17 +76,14 @@ impl<'a> ToSQL for Query<'a> {
             rv.push_str(&self.group_by.join(", "));
         }
 
-        let having_string = " HAVING ";
-        match self.having {
-            WhereType::Empty => {},
-            WhereType::Simple(clause) => {
-                rv.push_str(having_string);
-                rv.push_str(&clause.to_sql());
-            },
-            WhereType::Extended(clause) => {
-                rv.push_str(having_string);
-                rv.push_str(&clause.to_sql());
-            }
+        if !self.having.is_empty() {
+           rv.push(' ');
+           rv.push_str("HAVING");
+           rv.push(' ');
+           rv.push_str(&self.having.iter()
+                       .map(|x| x.to_sql())
+                       .collect::<Vec<_>>()
+                       .join("AND"));
         }
         
         if !self.order_by.is_empty() {
@@ -97,7 +91,7 @@ impl<'a> ToSQL for Query<'a> {
             rv.push_str("ORDER BY");
             rv.push(' ');
             rv.push_str(&self.order_by
-                        .into_iter()
+                        .iter()
                         .map(|x| x.to_sql())
                         .collect::<Vec<String>>()
                         .join(", "));
@@ -125,7 +119,7 @@ impl<'a> ToSQL for Query<'a> {
 
         match self.for_cl {
             ForType::Empty => {},
-            ForType::Specified(for_clause) => {
+            ForType::Specified(ref for_clause) => {
                 rv.push(' ');
                 rv.push_str(&for_clause.to_sql())
             }
@@ -151,7 +145,7 @@ mod tests {
     use select::SelectType;
     use join::{JoinType, Join};
     use order_by::{Ordering, OrderBy};
-    use where_cl::{Operator, WhereType, Where};
+    use where_cl::{Operator, Where, IntoWhereType};
     use distinct::DistinctType;
     use limit::LimitType;
     use offset::OffsetType;
@@ -163,11 +157,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -177,16 +171,15 @@ mod tests {
 
     #[test]
     fn select_foo_and_bar() {
-        let clauses = &["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(clauses),
+            select: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -196,16 +189,15 @@ mod tests {
 
     #[test]
     fn select_foo_and_bar_with_vec_params() {
-        let clauses = vec!["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
+            select: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -216,16 +208,15 @@ mod tests {
 
     #[test]
     fn select_foo_and_bar_with_vec_params_and_strings() {
-        let clauses = vec!["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
+            select: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -245,11 +236,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[&join],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![join],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -281,11 +272,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[&bar_join, &bazz_join],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![bar_join, bazz_join],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -306,11 +297,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &["foo"],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec!["foo"],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -330,11 +321,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &["foo", "bar"],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec!["foo", "bar"],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -359,11 +350,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[&order_by_foo_asc],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![order_by_foo_asc],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -393,11 +384,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[&order_by_foo_asc, &order_by_bar_desc],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![order_by_foo_asc, order_by_bar_desc],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -417,11 +408,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Simple("foo == bar"),
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec!["foo == bar".into_where_type()],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -437,20 +428,17 @@ mod tests {
 
     #[test]
     fn select_all_where_extended() {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where::new(Operator::And).clause("foo == bar").clause("lala == blah");
 
         let query = Query {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Extended(&where_cl),
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![where_cl.into_where_type()],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -470,11 +458,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Simple("foo == bar"),
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec!["foo == bar".into_where_type()],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -490,20 +478,17 @@ mod tests {
 
     #[test]
     fn select_all_with_extended_having() {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where::new(Operator::And).clause("foo == bar").clause("lala == blah");
 
         let query = Query {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Extended(&where_cl),
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![where_cl.into_where_type()],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -523,11 +508,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Simple,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -542,16 +527,15 @@ mod tests {
 
     #[test]
     fn select_all_distinct_extended() {
-        let distinct_fields = ["foo", "bar"];
         let query = Query {
             select: SelectType::All,
-            distinct: DistinctType::Extended(&distinct_fields),
+            distinct: DistinctType::Extended(vec!["foo", "bar"]),
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -568,7 +552,7 @@ mod tests {
     fn select_all_for_update() {
         let for_foo = For {
             mode: ForMode::Update,
-            tables: &[],
+            tables: vec![],
             nowait: false
         };
 
@@ -576,14 +560,14 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
-            for_cl: ForType::Specified(&for_foo)
+            for_cl: ForType::Specified(for_foo)
         };
 
         let test_sql_string = {
@@ -598,7 +582,7 @@ mod tests {
     fn select_all_for_update_clause() {
         let for_foo = For {
             mode: ForMode::Update,
-            tables: &["foo", "bar"],
+            tables: vec!["foo", "bar"],
             nowait: false
         };
 
@@ -606,14 +590,14 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
-            for_cl: ForType::Specified(&for_foo)
+            for_cl: ForType::Specified(for_foo)
         };
 
         let test_sql_string = {
@@ -628,14 +612,11 @@ mod tests {
     fn test_complex() {
         let for_bazz = For {
             mode: ForMode::Update,
-            tables: &["foo", "bar"],
+            tables: vec![&"foo", &"bar"],
             nowait: true
         };
 
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where::new(Operator::And).clause("foo == bar").clause("lala == blah");
 
         let order_by_bar_desc = OrderBy {
             ordering: Ordering::Descending,
@@ -659,20 +640,18 @@ mod tests {
             clause: "2 == 2"
         };
 
-        let clauses = ["foo", "bar"];
-        let distinct_fields = ["fizz", "bazz"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
-            distinct: DistinctType::Extended(&distinct_fields),
+            select: SelectType::Specific(vec!["foo", "bar"]),
+            distinct: DistinctType::Extended(vec!["fizz", "bazz"]),
             from: "test_table",
-            joins: &[&bar_join, &bazz_join],
-            group_by: &["foo", "bar"],
-            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
-            where_cl: WhereType::Extended(&where_cl),
-            having: WhereType::Extended(&where_cl),
+            joins: vec![bar_join, bazz_join],
+            group_by: vec!["foo", "bar"],
+            order_by: vec![order_by_bar_desc, order_by_foo_asc],
+            where_cl: vec![where_cl.clone().into_where_type()],
+            having: vec![where_cl.clone().into_where_type()],
             limit: LimitType::Specified("10"),
             offset: OffsetType::Specified("5"),
-            for_cl: ForType::Specified(&for_bazz)
+            for_cl: ForType::Specified(for_bazz)
         };
 
         let test_sql_string = {
@@ -693,10 +672,7 @@ mod tests {
 
     #[bench]
     fn bench_query_with_extended_where(b: &mut Bencher) {
-        let where_cl = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "lala == blah"]
-        };
+        let where_cl = Where::new(Operator::And).clause("foo == bar").clause("lala == blah");
 
         let order_by_bar_desc = OrderBy {
             ordering: Ordering::Descending,
@@ -720,16 +696,15 @@ mod tests {
             clause: "2 == 2"
         };
 
-        let clauses = ["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
+            select: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[&bar_join, &bazz_join],
-            group_by: &["foo", "bar"],
-            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
-            where_cl: WhereType::Extended(&where_cl),
-            having: WhereType::Empty,
+            joins: vec![bar_join, bazz_join],
+            group_by: vec!["foo", "bar"],
+            order_by: vec![order_by_bar_desc, order_by_foo_asc],
+            where_cl: vec![where_cl.into_where_type()],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -762,16 +737,15 @@ mod tests {
             clause: "2 == 2"
         };
 
-        let clauses = ["foo", "bar"];
         let query = Query {
-            select: SelectType::Specific(&clauses),
+            select: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[&bar_join, &bazz_join],
-            group_by: &["foo", "bar"],
-            order_by: &[&order_by_bar_desc, &order_by_foo_asc],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![bar_join, bazz_join],
+            group_by: vec!["foo", "bar"],
+            order_by: vec![order_by_bar_desc, order_by_foo_asc],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty

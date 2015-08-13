@@ -1,6 +1,7 @@
 use query::ToSQL;
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub enum Operator {
     And,
     Or
@@ -16,9 +17,58 @@ impl Operator {
 }
 
 #[allow(dead_code)]
-pub struct Where<'a, T: 'a + ToSQL> {
+#[derive(Clone)]
+pub enum WhereType<'a> {
+    Simple(&'a str),
+    Extended(Where<'a>),
+}
+
+
+#[allow(dead_code)]
+#[derive(Clone)]
+pub struct Where<'a> {
     pub operator: Operator,
-    pub clause: &'a [T]
+    pub clauses: Vec<WhereType<'a>>,
+}
+
+#[allow(dead_code)]
+impl<'a> Where<'a> {
+    pub fn new(operator: Operator) -> Self {
+        Where {
+            operator: operator,
+            clauses: vec![]
+        }
+    }
+
+    pub fn clause<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
+        self.clauses.push(clause.into_where_type());
+        self
+    }
+}
+
+pub trait IntoWhereType<'a> {
+    fn into_where_type(self) -> WhereType<'a>;
+}
+
+impl<'a> IntoWhereType<'a> for &'a str {
+    fn into_where_type(self) -> WhereType<'a> {
+        WhereType::Simple(self)
+    }
+}
+
+impl<'a> IntoWhereType<'a> for Where<'a> {
+    fn into_where_type(self) -> WhereType<'a> {
+        WhereType::Extended(self)
+    }
+}
+
+impl<'a> ToSQL for WhereType<'a> {
+    fn to_sql(&self) -> String {
+        match *self {
+            WhereType::Simple(clause) => clause.to_string(),
+            WhereType::Extended(ref clause) => clause.to_sql()
+        }
+    }
 }
 
 impl<'a> ToSQL for &'a str {
@@ -27,38 +77,25 @@ impl<'a> ToSQL for &'a str {
     }
 }
 
-impl<'a, T: ToSQL> ToSQL for Where<'a, T> {
+impl<'a> ToSQL for Where<'a> {
     fn to_sql(&self) -> String {
-        let operator = &format!(" {} ", self.operator.to_sql());
+        let operator = format!(" {} ", self.operator.to_sql());
         let mut rv = String::new();
         rv.push('(');
-        rv.push_str(&self.clause.into_iter()
+        rv.push_str(&self.clauses.iter()
                     .map(|x| x.to_sql())
                     .collect::<Vec<_>>()
-                    .join(operator));
+                    .join(&operator));
+
         rv.push(')');
         rv
     }
-}
-
-impl<'a, T: ToSQL> ToSQL for &'a Where<'a, T>{ 
-    fn to_sql(&self) -> String {
-        (**self).to_sql()
-    }
-}
-
-#[allow(dead_code)]
-pub enum WhereType<'a> {
-    Simple(&'a str),
-    Extended(&'a ToSQL),
-    Empty
 }
 
 #[cfg(test)]
 mod tests {
     use super::{Operator, Where};
     use query::ToSQL;
-
 
     #[test]
     fn test_operator() {
@@ -71,63 +108,30 @@ mod tests {
 
     #[test]
     fn test_alone_where() {
-        let foo = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "fizz == bazz"]
-        };
+        let foo = Where::new(Operator::And).clause("foo == bar").clause("fizz == bazz");
         assert_eq!(foo.to_sql(), "(foo == bar AND fizz == bazz)".to_string())
     }
 
     #[test]
     fn test_nested_where_clauses() {
-        let foo = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "fizz == bazz"]
-        };
-
-        let bar = Where {
-            operator: Operator::And,
-            clause: &["a == b", "c == d"]
-        };
-
-        let bazz = Where {
-            operator: Operator::Or,
-            clause: &[&foo, &bar]
-        };
+        let clause = Where::new(Operator::Or)
+            .clause(Where::new(Operator::And).clause("foo == bar").clause("fizz == bazz"))
+            .clause(Where::new(Operator::And).clause("a == b").clause("c == d"));
 
         let test_sql_string = {
             "((foo == bar AND fizz == bazz) OR \
             (a == b AND c == d))".to_string()
         };
-        assert_eq!(bazz.to_sql(), test_sql_string);
+        assert_eq!(clause.to_sql(), test_sql_string);
     }
 
     #[test]
     fn test_really_nested_where_clauses() {
-        let foo = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "fizz == bazz"]
-        };
-
-        let bar = Where {
-            operator: Operator::And,
-            clause: &["a == b", "c == d"]
-        };
-
-        let bazz1 = Where {
-            operator: Operator::Or,
-            clause: &[&foo, &bar]
-        };
-
-        let bazz2 = Where {
-            operator: Operator::Or,
-            clause: &[&bar, &foo]
-        };
-
-        let fizz = Where {
-            operator: Operator::And,
-            clause: &[&bazz1, &bazz2]
-        };
+        let foo = Where::new(Operator::And).clause("foo == bar").clause("fizz == bazz");
+        let bar = Where::new(Operator::And).clause("a == b").clause("c == d");
+        let bazz1 = Where::new(Operator::Or).clause(foo.clone()).clause(bar.clone());
+        let bazz2 = Where::new(Operator::Or).clause(bar.clone()).clause(foo.clone());
+        let fizz = Where::new(Operator::And).clause(bazz1).clause(bazz2);
 
         let test_sql_string = {
             "(((foo == bar AND fizz == bazz) OR \

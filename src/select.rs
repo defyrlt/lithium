@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 pub enum SelectType<'a> {
     All,
-    Specific(&'a [&'a str])
+    Specific(Vec<&'a str>)
 }
 
 impl<'a> SelectType<'a> {
@@ -9,7 +9,7 @@ impl<'a> SelectType<'a> {
     pub fn to_sql(&self) -> String {
         match *self {
             SelectType::All => "*".to_string(),
-            SelectType::Specific(clauses) => clauses.join(", ")
+            SelectType::Specific(ref clauses) => clauses.join(", ")
         }
     }
 }
@@ -26,16 +26,13 @@ mod tests {
 
     #[test]
     fn select_foo_and_bar() {
-        let clauses = &["foo", "bar"];
-        let select = SelectType::Specific(clauses);
+        let select = SelectType::Specific(vec!["foo", "bar"]);
         assert_eq!(select.to_sql(), "foo, bar".to_string());
     }
 
     #[test]
     fn select_foo_and_bar_with_vec_params() {
-        let clauses = vec!["foo", "bar"];
-        let select = SelectType::Specific(&clauses);
+        let select = SelectType::Specific(vec!["foo", "bar"]);
         assert_eq!(select.to_sql(), "foo, bar".to_string());
     }
 }
-
