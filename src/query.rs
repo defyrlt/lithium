@@ -11,7 +11,7 @@ pub trait ToSQL {
     fn to_sql(&self) -> String;
 }
 
-#[allow(dead_code)]
+#[derive(Clone)]
 pub struct Query<'a> {
     pub select: SelectType<'a>,
     pub distinct: DistinctType<'a>,

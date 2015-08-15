@@ -1,4 +1,4 @@
-#[allow(dead_code)]
+#[derive(Clone)]
 pub enum ForMode {
     Update,
     Share
@@ -13,6 +13,7 @@ impl ForMode {
     }
 }
 
+#[derive(Clone)]
 pub struct For<'a> {
     pub mode: ForMode,
     pub tables: Vec<&'a str>,
@@ -41,7 +42,7 @@ impl<'a> For<'a> {
     }
 }
 
-#[allow(dead_code)]
+#[derive(Clone)]
 pub enum ForType<'a> {
     Empty,
     Specified(For<'a>)

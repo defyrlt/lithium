@@ -1,4 +1,5 @@
 #[allow(dead_code)]
+#[derive(Clone)]
 pub enum Ordering {
     Ascending,
     Descending,
@@ -13,6 +14,7 @@ impl Ordering {
     }
 }
 
+#[derive(Clone)]
 pub struct OrderBy<'a> {
     pub ordering: Ordering,
     pub order_by: &'a str

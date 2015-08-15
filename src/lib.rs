@@ -1,4 +1,5 @@
 #![allow(unused_features)]
+#![allow(dead_code)]
 #![feature(test)]
 #![feature(box_syntax, box_patterns)]
 mod query;
@@ -10,5 +11,5 @@ mod distinct;
 mod limit;
 mod offset;
 mod for_cl;
-// mod union;
-// mod update;
+mod union;
+mod update;

@@ -1,12 +1,10 @@
 use query::ToSQL;
 
-#[allow(dead_code)]
 enum UnionType {
     Simple,
     All
 }
 
-#[allow(dead_code)]
 struct Union<L: ToSQL, R: ToSQL> {
     left: L,
     right: R,
@@ -42,7 +40,6 @@ mod tests {
     use super::{Union, UnionType};
     use query::{ToSQL, Query};
     use select::SelectType;
-    use where_cl::WhereType;
     use distinct::DistinctType;
     use limit::LimitType;
     use offset::OffsetType;
@@ -54,11 +51,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -79,16 +76,46 @@ mod tests {
     }
 
     #[test]
+    fn test_owned_queries() {
+        let query = Query {
+            select: SelectType::All,
+            distinct: DistinctType::Empty,
+            from: "test_table",
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
+            limit: LimitType::Empty,
+            offset: OffsetType::Empty,
+            for_cl: ForType::Empty
+        };
+
+        let union = Union {
+            left: query.clone(),
+            right: query,
+            mode: UnionType::Simple
+        };
+
+        let expected = {
+            "SELECT * FROM test_table \
+            UNION \
+            SELECT * FROM test_table".to_string()
+        };
+        assert_eq!(union.to_sql(), expected);
+    }
+
+    #[test]
     fn test_union_all() {
         let query = Query {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
@@ -114,11 +141,11 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty

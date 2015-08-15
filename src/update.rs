@@ -1,33 +1,103 @@
-use where_cl::WhereType;
+use query::ToSQL;
+use where_cl::{WhereType, IntoWhereType};
 
 // TODO: make it pretty
-const WHERE: &'static str = " WHERE ";
 const RETURNING: &'static str = " RETURNING ";
 
-#[allow(dead_code)]
+#[derive(Clone, PartialEq, Eq)]
 enum FromType<'a> {
     Empty,
     Specified(&'a str)
 }
 
-#[allow(dead_code)]
+#[derive(Clone, PartialEq, Eq)]
 enum ReturningType<'a> {
     Empty,
     All,
-    Specified(&'a [&'a str])
+    Specified(Vec<&'a str>)
 }
 
-#[allow(dead_code)]
+#[derive(Clone, PartialEq, Eq)]
 struct Update<'a> {
     table: &'a str,
-    expressions: &'a [&'a str],
+    expressions: Vec<&'a str>,
     from: FromType<'a>,
-    where_cl: WhereType<'a>,
+    where_cl: Vec<WhereType<'a>>,
     returning: ReturningType<'a>
 }
 
 impl<'a> Update<'a> {
-    #[allow(dead_code)]
+    fn new(table: &'a str) -> Self {
+        Update {
+            table: table,
+            expressions: vec![],
+            from: FromType::Empty,
+            where_cl: vec![],
+            returning: ReturningType::Empty
+        }
+    }
+
+    fn expression(mut self, expression: &'a str) -> Self {
+        self.expressions.push(expression);
+        self
+    }
+
+    fn push_expressions(mut self, expressions: &'a [&'a str]) -> Self {
+        self.expressions.extend(expressions.iter().cloned());
+        self
+    }
+
+    fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
+        self.where_cl.push(clause.into_where_type());
+        self
+    }
+
+    fn from(mut self, table: &'a str) -> Self {
+        self.from = FromType::Specified(table);
+        self
+    }
+
+    fn clear_from(mut self) -> Self {
+        self.from = FromType::Empty;
+        self
+    }
+
+    fn empty_returning(mut self) -> Self {
+        self.returning = ReturningType::Empty;
+        self
+    }
+
+    fn returning_all(mut self) -> Self {
+        self.returning = ReturningType::All;
+        self
+    }
+
+    fn returning(mut self, expression: &'a str) -> Self {
+        match self.returning {
+            ReturningType::Empty | ReturningType::All => {
+                self.returning = ReturningType::Specified(vec![expression]);
+            },
+            ReturningType::Specified(ref mut expressions) => expressions.push(expression)
+        }
+        self
+    }
+
+    fn push_returning(mut self, expressions: &'a [&'a str]) -> Self {
+        let new = expressions.iter().cloned();
+        match self.returning {
+            ReturningType::Empty | ReturningType::All => {
+                let mut returning = Vec::new();
+                returning.extend(new);
+                self.returning = ReturningType::Specified(returning);
+            },
+            ReturningType::Specified(ref mut returning) => returning.extend(new)
+        }
+        self
+        
+    }
+}
+
+impl<'a> ToSQL for Update<'a> {
     fn to_sql(&self) -> String {
         let mut rv = String::new();
         rv.push_str("UPDATE");
@@ -45,16 +115,14 @@ impl<'a> Update<'a> {
             rv.push_str(table);
         }
 
-        match self.where_cl {
-            WhereType::Empty => {},
-            WhereType::Simple(value) => {
-                rv.push_str(WHERE);
-                rv.push_str(value);
-            },
-            WhereType::Extended(value) => {
-                rv.push_str(WHERE);
-                rv.push_str(&value.to_sql());
-            }
+        if !self.where_cl.is_empty() {
+           rv.push(' ');
+           rv.push_str("WHERE");
+           rv.push(' ');
+           rv.push_str(&self.where_cl.iter()
+                       .map(|x| x.to_sql())
+                       .collect::<Vec<_>>()
+                       .join("AND"));
         }
 
         match self.returning {
@@ -63,7 +131,7 @@ impl<'a> Update<'a> {
                 rv.push_str(RETURNING);
                 rv.push('*');
             },
-            ReturningType::Specified(values) => {
+            ReturningType::Specified(ref values) => {
                 rv.push_str(RETURNING);
                 rv.push_str(&values.join(", "));
             }
@@ -76,35 +144,61 @@ impl<'a> Update<'a> {
 #[cfg(test)]
 mod tests {
     use super::{FromType, ReturningType, Update};
-    use where_cl::{WhereType, Operator, Where};
+    use query::ToSQL;
+    use where_cl::{Operator, Where, IntoWhereType};
+
+    #[test]
+    fn smoke_test_builder() {
+        let exprs = ["b = 3", "c = 5"];
+        let _upd = Update::new("test_table")
+            .expression("a = 2")
+            .push_expressions(&exprs)
+            .where_cl("a == 10")
+            .from("yo")
+            .clear_from()
+            .empty_returning()
+            .returning_all()
+            .returning("blah")
+            .returning("ko");
+    }
 
     #[test]
     fn test_simple() {
         let update = Update {
             table: "test_table",
-            expressions: &["a = 2", "b = 3"],
+            expressions: vec!["a = 2", "b = 3"],
             from: FromType::Empty,
-            where_cl: WhereType::Empty,
+            where_cl: vec![],
             returning: ReturningType::Empty
         };
+
+        let built = Update::new("test_table").expression("a = 2").expression("b = 3");
 
         let expected = {
             "UPDATE test_table \
             SET a = 2, b = 3".to_string()
         };
 
-        assert_eq!(update.to_sql(), expected);
+        assert!(update == built);
+        assert_eq!(built.to_sql(), expected);
     }
 
     #[test]
     fn test_returning_all() {
         let update = Update {
             table: "test_table",
-            expressions: &["a = 2", "b = 3"],
+            expressions: vec!["a = 2", "b = 3"],
             from: FromType::Specified("other_test_table"),
-            where_cl: WhereType::Simple("d == 3"),
+            where_cl: vec!["d == 3".into_where_type()],
             returning: ReturningType::All
         };
+
+        let built = Update::new("test_table")
+            .expression("a = 2")
+            .expression("b = 3")
+            .from("other_test_table")
+            .where_cl("d == 3")
+            .returning_all();
 
         let expected = {
             "UPDATE test_table \
@@ -114,25 +208,31 @@ mod tests {
             RETURNING *".to_string()
         };
 
-        assert_eq!(update.to_sql(), expected);
+        assert!(update == built);
+        assert_eq!(built.to_sql(), expected);
     }
 
     #[test]
     fn test_returning_some() {
-        let foo = Where {
-            operator: Operator::And,
-            clause: &["foo == bar", "fizz == bazz"]
+        let foo = Where::new(Operator::And).clause("foo == bar").clause("fizz == bazz");
+        let bar = Where::new(Operator::And).clause("a == b").clause("c == d");
+        let where_cl = Where::new(Operator::Or).clause(foo).clause(bar);
+
+        let update = Update {
+            table: "test_table",
+            expressions: vec!["a = 2", "b = 3"],
+            from: FromType::Specified("other_test_table"),
+            where_cl: vec![where_cl.clone().into_where_type()],
+            returning: ReturningType::Specified(vec!["a", "b"])
         };
 
-        let bar = Where {
-            operator: Operator::And,
-            clause: &["a == b", "c == d"]
-        };
-
-        let where_cl = Where {
-            operator: Operator::Or,
-            clause: &[&foo, &bar]
-        };
+        let built = Update::new("test_table")
+            .expression("a = 2")
+            .expression("b = 3")
+            .from("other_test_table")
+            .where_cl(where_cl)
+            .returning("a")
+            .returning("b");
 
         let expected = {
             "UPDATE test_table \
@@ -144,15 +244,7 @@ mod tests {
             RETURNING a, b".to_string()
         };
 
-        let returning = ["a", "b"];
-        let update = Update {
-            table: "test_table",
-            expressions: &["a = 2", "b = 3"],
-            from: FromType::Specified("other_test_table"),
-            where_cl: WhereType::Extended(&where_cl),
-            returning: ReturningType::Specified(&returning)
-        };
-
-        assert_eq!(update.to_sql(), expected);
+        assert!(update == built);
+        assert_eq!(built.to_sql(), expected);
     }
 }

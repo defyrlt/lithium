@@ -1,5 +1,5 @@
 // TODO: add cross join
-#[allow(dead_code)]
+#[derive(Clone)]
 pub enum JoinType {
     Inner,
     Left,
@@ -18,6 +18,7 @@ impl JoinType {
     }
 }
 
+#[derive(Clone)]
 pub struct Join<'a> {
     pub join_type: JoinType,
     pub target: &'a str,

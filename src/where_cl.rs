@@ -1,7 +1,6 @@
 use query::ToSQL;
 
-#[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Operator {
     And,
     Or
@@ -16,22 +15,19 @@ impl Operator {
     }
 }
 
-#[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum WhereType<'a> {
     Simple(&'a str),
     Extended(Where<'a>),
 }
 
 
-#[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Where<'a> {
     pub operator: Operator,
     pub clauses: Vec<WhereType<'a>>,
 }
 
-#[allow(dead_code)]
 impl<'a> Where<'a> {
     pub fn new(operator: Operator) -> Self {
         Where {

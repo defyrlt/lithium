@@ -1,4 +1,4 @@
-#[allow(dead_code)]
+#[derive(Clone)]
 pub enum DistinctType<'a> {
     Empty,
     Simple,
