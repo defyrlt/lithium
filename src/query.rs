@@ -27,7 +27,7 @@ pub struct Query<'a> {
 }
 
 impl<'a> Query<'a> {
-    fn new(from_table: &'a str) -> Self {
+    pub fn new(from_table: &'a str) -> Self {
         Query {
             select: SelectType::All,
             distinct: DistinctType::Empty,
@@ -43,12 +43,12 @@ impl<'a> Query<'a> {
         }
     }
 
-    fn select_all(mut self) -> Self {
+    pub fn select_all(mut self) -> Self {
         self.select = SelectType::All;
         self
     }
 
-    fn select(mut self, field: &'a str) -> Self {
+    pub fn select(mut self, field: &'a str) -> Self {
         match self.select {
             SelectType::All => {
                 self.select = SelectType::Specific(vec![field]);
@@ -58,17 +58,17 @@ impl<'a> Query<'a> {
         self
     }
 
-    fn clear_distinct(mut self) -> Self {
+    pub fn clear_distinct(mut self) -> Self {
         self.distinct = DistinctType::Empty;
         self
     }
 
-    fn distinct(mut self) -> Self {
+    pub fn distinct(mut self) -> Self {
         self.distinct = DistinctType::Simple;
         self
     }
 
-    fn distinct_on(mut self, field: &'a str) -> Self {
+    pub fn distinct_on(mut self, field: &'a str) -> Self {
         match self.distinct {
             DistinctType::Empty | DistinctType::Simple => {
                 self.distinct = DistinctType::Extended(vec![field]);
@@ -78,7 +78,7 @@ impl<'a> Query<'a> {
         self
     }
 
-    fn push_join(mut self, join_type: JoinType, target: &'a str, clause: &'a str) -> Self {
+    pub fn push_join(mut self, join_type: JoinType, target: &'a str, clause: &'a str) -> Self {
         self.joins.push(Join {
             join_type: join_type,
             target: target,
@@ -87,28 +87,28 @@ impl<'a> Query<'a> {
         self
     }
 
-    fn join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn join(self, target: &'a str, clause: &'a str) -> Self {
         self.push_join(JoinType::Inner, target, clause)
     }
 
-    fn left_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn left_join(self, target: &'a str, clause: &'a str) -> Self {
         self.push_join(JoinType::Left, target, clause)
     }
 
-    fn right_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn right_join(self, target: &'a str, clause: &'a str) -> Self {
         self.push_join(JoinType::Right, target, clause)
     }
 
-    fn outer_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn outer_join(self, target: &'a str, clause: &'a str) -> Self {
         self.push_join(JoinType::Outer, target, clause)
     }
 
-    fn group_by(mut self, field: &'a str) -> Self {
+    pub fn group_by(mut self, field: &'a str) -> Self {
         self.group_by.push(field);
         self
     }
 
-    fn order_by(mut self, field: &'a str, ordering: Ordering) -> Self {
+    pub fn order_by(mut self, field: &'a str, ordering: Ordering) -> Self {
         self.order_by.push(OrderBy {
             ordering: ordering,
             order_by: field
@@ -116,37 +116,37 @@ impl<'a> Query<'a> {
         self
     }
 
-    fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
+    pub fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.where_cl.push(clause.into_where_type());
         self
     }
 
-    fn having<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
+    pub fn having<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.having.push(clause.into_where_type());
         self
     }
 
-    fn limit(mut self, value: &'a str) -> Self {
+    pub fn limit(mut self, value: &'a str) -> Self {
         self.limit = LimitType::Specified(value);
         self
     }
 
-    fn clear_limit(mut self) -> Self {
+    pub fn clear_limit(mut self) -> Self {
         self.limit = LimitType::Empty;
         self
     }
 
-    fn offset(mut self, value: &'a str) -> Self {
+    pub fn offset(mut self, value: &'a str) -> Self {
         self.offset = OffsetType::Specified(value);
         self
     }
 
-    fn clear_offset(mut self) -> Self {
+    pub fn clear_offset(mut self) -> Self {
         self.offset = OffsetType::Empty;
         self
     }
 
-    fn for_update(mut self, nowait: bool, tables: Vec<&'a str>) -> Self {
+    pub fn for_update(mut self, nowait: bool, tables: Vec<&'a str>) -> Self {
         self.for_cl = ForType::Specified(For {
             mode: ForMode::Update,
             tables: tables,
@@ -155,7 +155,7 @@ impl<'a> Query<'a> {
         self
     }
 
-    fn for_share(mut self, nowait: bool, tables: Vec<&'a str>) -> Self {
+    pub fn for_share(mut self, nowait: bool, tables: Vec<&'a str>) -> Self {
         self.for_cl = ForType::Specified(For {
             mode: ForMode::Share,
             tables: tables,
@@ -164,7 +164,7 @@ impl<'a> Query<'a> {
         self
     }
 
-    fn clear_for(mut self) -> Self {
+    pub fn clear_for(mut self) -> Self {
         self.for_cl = ForType::Empty;
         self
     }

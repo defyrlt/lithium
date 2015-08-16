@@ -27,7 +27,7 @@ struct Update<'a> {
 }
 
 impl<'a> Update<'a> {
-    fn new(table: &'a str) -> Self {
+    pub fn new(table: &'a str) -> Self {
         Update {
             table: table,
             expressions: vec![],
@@ -37,42 +37,42 @@ impl<'a> Update<'a> {
         }
     }
 
-    fn expression(mut self, expression: &'a str) -> Self {
+    pub fn expression(mut self, expression: &'a str) -> Self {
         self.expressions.push(expression);
         self
     }
 
-    fn push_expressions(mut self, expressions: &'a [&'a str]) -> Self {
+    pub fn push_expressions(mut self, expressions: &'a [&'a str]) -> Self {
         self.expressions.extend(expressions.iter().cloned());
         self
     }
 
-    fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
+    pub fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.where_cl.push(clause.into_where_type());
         self
     }
 
-    fn from(mut self, table: &'a str) -> Self {
+    pub fn from(mut self, table: &'a str) -> Self {
         self.from = FromType::Specified(table);
         self
     }
 
-    fn clear_from(mut self) -> Self {
+    pub fn clear_from(mut self) -> Self {
         self.from = FromType::Empty;
         self
     }
 
-    fn empty_returning(mut self) -> Self {
+    pub fn empty_returning(mut self) -> Self {
         self.returning = ReturningType::Empty;
         self
     }
 
-    fn returning_all(mut self) -> Self {
+    pub fn returning_all(mut self) -> Self {
         self.returning = ReturningType::All;
         self
     }
 
-    fn returning(mut self, expression: &'a str) -> Self {
+    pub fn returning(mut self, expression: &'a str) -> Self {
         match self.returning {
             ReturningType::Empty | ReturningType::All => {
                 self.returning = ReturningType::Specified(vec![expression]);
@@ -82,7 +82,7 @@ impl<'a> Update<'a> {
         self
     }
 
-    fn push_returning(mut self, expressions: &'a [&'a str]) -> Self {
+    pub fn push_returning(mut self, expressions: &'a [&'a str]) -> Self {
         let new = expressions.iter().cloned();
         match self.returning {
             ReturningType::Empty | ReturningType::All => {
