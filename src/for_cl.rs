@@ -21,6 +21,34 @@ pub struct For<'a> {
 }
 
 impl<'a> For<'a> {
+    pub fn new(mode: ForMode) -> Self {
+        For {
+            mode: mode,
+            tables: vec![],
+            nowait: false
+        }
+    }
+
+    pub fn update() -> Self {
+        Self::new(ForMode::Update)
+    }
+
+    pub fn share() -> Self {
+        Self::new(ForMode::Share)
+    }
+
+    pub fn table(mut self, table: &'a str) -> Self {
+        self.tables.push(table);
+        self
+    }
+
+    pub fn nowait(mut self) -> Self {
+        self.nowait = true;
+        self
+    }
+}
+
+impl<'a> For<'a> {
     pub fn to_sql(&self) -> String {
         let mut rv = String::new();
         rv.push_str("FOR");
@@ -69,6 +97,9 @@ mod tests {
             nowait: false
         };
 
+        let built = For::update();
+
+        assert!(for_cl == built);
         assert_eq!(for_cl.to_sql(), "FOR UPDATE")
     }
 
@@ -80,6 +111,9 @@ mod tests {
             nowait: false
         };
 
+        let built = For::share().table("foo").table("bar");
+
+        assert!(for_cl == built);
         assert_eq!(for_cl.to_sql(), "FOR SHARE OF foo, bar")
     }
 
@@ -91,6 +125,9 @@ mod tests {
             nowait: true
         };
 
+        let built = For::update().table("foo").table("bar").nowait();
+
+        assert!(for_cl == built);
         assert_eq!(for_cl.to_sql(), "FOR UPDATE OF foo, bar NOWAIT")
     }
 }

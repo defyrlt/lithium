@@ -5,7 +5,7 @@ use where_cl::{WhereType, IntoWhereType};
 use distinct::DistinctType;
 use limit::LimitType;
 use offset::OffsetType;
-use for_cl::{For, ForType, ForMode};
+use for_cl::{For, ForType};
 
 pub trait ToSQL {
     fn to_sql(&self) -> String;
@@ -146,26 +146,13 @@ impl<'a> Query<'a> {
         self
     }
 
-    pub fn for_update(mut self, nowait: bool, tables: Vec<&'a str>) -> Self {
-        self.for_cl = ForType::Specified(For {
-            mode: ForMode::Update,
-            tables: tables,
-            nowait: nowait
-        });
-        self
-    }
-
-    pub fn for_share(mut self, nowait: bool, tables: Vec<&'a str>) -> Self {
-        self.for_cl = ForType::Specified(For {
-            mode: ForMode::Share,
-            tables: tables,
-            nowait: nowait
-        });
-        self
-    }
-
     pub fn clear_for(mut self) -> Self {
         self.for_cl = ForType::Empty;
+        self
+    }
+
+    pub fn for_cl(mut self, for_cl: For<'a>) -> Self {
+        self.for_cl = ForType::Specified(for_cl);
         self
     }
 }
@@ -734,7 +721,7 @@ mod tests {
             for_cl: ForType::Specified(for_foo)
         };
 
-        let built = Query::new("test_table").for_update(false, vec![]);
+        let built = Query::new("test_table").for_cl(For::update());
 
         let test_sql_string = {
             "SELECT * \
@@ -768,7 +755,7 @@ mod tests {
             for_cl: ForType::Specified(for_foo)
         };
 
-        let built = Query::new("test_table").for_update(false, vec!["foo", "bar"]);
+        let built = Query::new("test_table").for_cl(For::update().table("foo").table("bar"));
 
         let test_sql_string = {
             "SELECT * \
@@ -836,7 +823,7 @@ mod tests {
             .order_by("foo", Ordering::Ascending)
             .limit("10")
             .offset("5")
-            .for_update(true, vec!["foo", "bar"]);
+            .for_cl(For::update().table("foo").table("bar").nowait());
 
         let test_sql_string = {
             "SELECT DISTINCT ON (fizz, bazz) foo, bar \
