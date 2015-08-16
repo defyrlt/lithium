@@ -1,17 +1,17 @@
 use select::SelectType;
-use join::Join;
-use order_by::OrderBy;
-use where_cl::WhereType;
+use join::{Join, JoinType};
+use order_by::{OrderBy, Ordering};
+use where_cl::{WhereType, IntoWhereType};
 use distinct::DistinctType;
 use limit::LimitType;
 use offset::OffsetType;
-use for_cl::ForType;
+use for_cl::{For, ForType, ForMode};
 
 pub trait ToSQL {
     fn to_sql(&self) -> String;
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Query<'a> {
     pub select: SelectType<'a>,
     pub distinct: DistinctType<'a>,
@@ -24,6 +24,150 @@ pub struct Query<'a> {
     pub limit: LimitType<'a>,
     pub offset: OffsetType<'a>,
     pub for_cl: ForType<'a>
+}
+
+impl<'a> Query<'a> {
+    fn new(from_table: &'a str) -> Self {
+        Query {
+            select: SelectType::All,
+            distinct: DistinctType::Empty,
+            from: from_table,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
+            limit: LimitType::Empty,
+            offset: OffsetType::Empty,
+            for_cl: ForType::Empty
+        }
+    }
+
+    fn select_all(mut self) -> Self {
+        self.select = SelectType::All;
+        self
+    }
+
+    fn select(mut self, field: &'a str) -> Self {
+        match self.select {
+            SelectType::All => {
+                self.select = SelectType::Specific(vec![field]);
+            },
+            SelectType::Specific(ref mut fields) => fields.push(field)
+        }
+        self
+    }
+
+    fn clear_distinct(mut self) -> Self {
+        self.distinct = DistinctType::Empty;
+        self
+    }
+
+    fn distinct(mut self) -> Self {
+        self.distinct = DistinctType::Simple;
+        self
+    }
+
+    fn distinct_on(mut self, field: &'a str) -> Self {
+        match self.distinct {
+            DistinctType::Empty | DistinctType::Simple => {
+                self.distinct = DistinctType::Extended(vec![field]);
+            },
+            DistinctType::Extended(ref mut fields) => fields.push(field)
+        }
+        self
+    }
+
+    fn push_join(mut self, join_type: JoinType, target: &'a str, clause: &'a str) -> Self {
+        self.joins.push(Join {
+            join_type: join_type,
+            target: target,
+            clause: clause
+        });
+        self
+    }
+
+    fn join(self, target: &'a str, clause: &'a str) -> Self {
+        self.push_join(JoinType::Inner, target, clause)
+    }
+
+    fn left_join(self, target: &'a str, clause: &'a str) -> Self {
+        self.push_join(JoinType::Left, target, clause)
+    }
+
+    fn right_join(self, target: &'a str, clause: &'a str) -> Self {
+        self.push_join(JoinType::Right, target, clause)
+    }
+
+    fn outer_join(self, target: &'a str, clause: &'a str) -> Self {
+        self.push_join(JoinType::Outer, target, clause)
+    }
+
+    fn group_by(mut self, field: &'a str) -> Self {
+        self.group_by.push(field);
+        self
+    }
+
+    fn order_by(mut self, field: &'a str, ordering: Ordering) -> Self {
+        self.order_by.push(OrderBy {
+            ordering: ordering,
+            order_by: field
+        });
+        self
+    }
+
+    fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
+        self.where_cl.push(clause.into_where_type());
+        self
+    }
+
+    fn having<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
+        self.having.push(clause.into_where_type());
+        self
+    }
+
+    fn limit(mut self, value: &'a str) -> Self {
+        self.limit = LimitType::Specified(value);
+        self
+    }
+
+    fn clear_limit(mut self) -> Self {
+        self.limit = LimitType::Empty;
+        self
+    }
+
+    fn offset(mut self, value: &'a str) -> Self {
+        self.offset = OffsetType::Specified(value);
+        self
+    }
+
+    fn clear_offset(mut self) -> Self {
+        self.offset = OffsetType::Empty;
+        self
+    }
+
+    fn for_update(mut self, nowait: bool, tables: Vec<&'a str>) -> Self {
+        self.for_cl = ForType::Specified(For {
+            mode: ForMode::Update,
+            tables: tables,
+            nowait: nowait
+        });
+        self
+    }
+
+    fn for_share(mut self, nowait: bool, tables: Vec<&'a str>) -> Self {
+        self.for_cl = ForType::Specified(For {
+            mode: ForMode::Share,
+            tables: tables,
+            nowait: nowait
+        });
+        self
+    }
+
+    fn clear_for(mut self) -> Self {
+        self.for_cl = ForType::Empty;
+        self
+    }
 }
 
 impl<'a> ToSQL for Query<'a> {
@@ -66,7 +210,7 @@ impl<'a> ToSQL for Query<'a> {
            rv.push_str(&self.where_cl.iter()
                        .map(|x| x.to_sql())
                        .collect::<Vec<_>>()
-                       .join("AND"));
+                       .join(" AND "));
         }
 
         if !self.group_by.is_empty() {
@@ -83,7 +227,7 @@ impl<'a> ToSQL for Query<'a> {
            rv.push_str(&self.having.iter()
                        .map(|x| x.to_sql())
                        .collect::<Vec<_>>()
-                       .join("AND"));
+                       .join(" AND "));
         }
         
         if !self.order_by.is_empty() {
@@ -166,6 +310,10 @@ mod tests {
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
+
+        let built = Query::new("test_table");
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), "SELECT * FROM test_table".to_string());
     }
 
@@ -184,45 +332,13 @@ mod tests {
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
+
+        let built = Query::new("test_table").select("foo").select("bar");
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
     }
 
-    #[test]
-    fn select_foo_and_bar_with_vec_params() {
-        let query = Query {
-            select: SelectType::Specific(vec!["foo", "bar"]),
-            distinct: DistinctType::Empty,
-            from: "test_table",
-            joins: vec![],
-            group_by: vec![],
-            order_by: vec![],
-            where_cl: vec![],
-            having: vec![],
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
-        };
-        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
-    }
-
-
-    #[test]
-    fn select_foo_and_bar_with_vec_params_and_strings() {
-        let query = Query {
-            select: SelectType::Specific(vec!["foo", "bar"]),
-            distinct: DistinctType::Empty,
-            from: "test_table",
-            joins: vec![],
-            group_by: vec![],
-            order_by: vec![],
-            where_cl: vec![],
-            having: vec![],
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
-        };
-        assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
-    }
 
     #[test]
     fn select_foo_and_join_bar() {
@@ -246,11 +362,15 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").join("target_table", "2 == 2");
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             INNER JOIN target_table ON 2 == 2".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -282,12 +402,18 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table")
+            .join("bar_table", "1 == 1")
+            .left_join("bazz_table", "2 == 2");
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             INNER JOIN bar_table ON 1 == 1 \
             LEFT JOIN bazz_table ON 2 == 2".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -307,11 +433,15 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").group_by("foo");
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             GROUP BY foo".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -331,11 +461,15 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").group_by("foo").group_by("bar");
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             GROUP BY foo, bar".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -360,11 +494,15 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").order_by("foo", Ordering::Ascending);
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             ORDER BY foo ASC".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -394,11 +532,17 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table")
+            .order_by("foo", Ordering::Ascending)
+            .order_by("bar", Ordering::Descending);
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             ORDER BY foo ASC, bar DESC".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -418,18 +562,20 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").where_cl("foo == bar");
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             WHERE foo == bar".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
     #[test]
     fn select_all_where_extended() {
-        let where_cl = Where::new(Operator::And).clause("foo == bar").clause("lala == blah");
-
         let query = Query {
             select: SelectType::All,
             distinct: DistinctType::Empty,
@@ -437,18 +583,22 @@ mod tests {
             joins: vec![],
             group_by: vec![],
             order_by: vec![],
-            where_cl: vec![where_cl.into_where_type()],
+            where_cl: vec!["foo == bar".into_where_type(), "lala == blah".into_where_type()],
             having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").where_cl("foo == bar").where_cl("lala == blah");
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            WHERE (foo == bar AND lala == blah)".to_string()
+            WHERE foo == bar AND lala == blah".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -468,18 +618,20 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").having("foo == bar");
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             HAVING foo == bar".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
     #[test]
     fn select_all_with_extended_having() {
-        let where_cl = Where::new(Operator::And).clause("foo == bar").clause("lala == blah");
-
         let query = Query {
             select: SelectType::All,
             distinct: DistinctType::Empty,
@@ -488,17 +640,21 @@ mod tests {
             group_by: vec![],
             order_by: vec![],
             where_cl: vec![],
-            having: vec![where_cl.into_where_type()],
+            having: vec!["foo == bar".into_where_type(), "lala == blah".into_where_type()],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").having("foo == bar").having("lala == blah");
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
-            HAVING (foo == bar AND lala == blah)".to_string()
+            HAVING foo == bar AND lala == blah".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -518,10 +674,14 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").distinct();
+
         let test_sql_string = {
             "SELECT DISTINCT * \
             FROM test_table".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -541,10 +701,14 @@ mod tests {
             for_cl: ForType::Empty
         };
 
+        let built = Query::new("test_table").distinct_on("foo").distinct_on("bar");
+
         let test_sql_string = {
             "SELECT DISTINCT ON (foo, bar) * \
             FROM test_table".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -570,11 +734,15 @@ mod tests {
             for_cl: ForType::Specified(for_foo)
         };
 
+        let built = Query::new("test_table").for_update(false, vec![]);
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             FOR UPDATE".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -600,11 +768,15 @@ mod tests {
             for_cl: ForType::Specified(for_foo)
         };
 
+        let built = Query::new("test_table").for_update(false, vec!["foo", "bar"]);
+
         let test_sql_string = {
             "SELECT * \
             FROM test_table \
             FOR UPDATE OF foo, bar".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 
@@ -612,11 +784,9 @@ mod tests {
     fn test_complex() {
         let for_bazz = For {
             mode: ForMode::Update,
-            tables: vec![&"foo", &"bar"],
+            tables: vec!["foo", "bar"],
             nowait: true
         };
-
-        let where_cl = Where::new(Operator::And).clause("foo == bar").clause("lala == blah");
 
         let order_by_bar_desc = OrderBy {
             ordering: Ordering::Descending,
@@ -647,26 +817,42 @@ mod tests {
             joins: vec![bar_join, bazz_join],
             group_by: vec!["foo", "bar"],
             order_by: vec![order_by_bar_desc, order_by_foo_asc],
-            where_cl: vec![where_cl.clone().into_where_type()],
-            having: vec![where_cl.clone().into_where_type()],
+            where_cl: vec!["foo == bar".into_where_type(), "lala == blah".into_where_type()],
+            having: vec!["foo == bar".into_where_type(), "lala == blah".into_where_type()],
             limit: LimitType::Specified("10"),
             offset: OffsetType::Specified("5"),
             for_cl: ForType::Specified(for_bazz)
         };
+
+        let built = Query::new("test_table")
+            .select("foo").select("bar")
+            .distinct_on("fizz").distinct_on("bazz")
+            .join("bar_table", "1 == 1")
+            .left_join("bazz_table", "2 == 2")
+            .group_by("foo").group_by("bar")
+            .where_cl("foo == bar").where_cl("lala == blah")
+            .having("foo == bar").having("lala == blah")
+            .order_by("bar", Ordering::Descending)
+            .order_by("foo", Ordering::Ascending)
+            .limit("10")
+            .offset("5")
+            .for_update(true, vec!["foo", "bar"]);
 
         let test_sql_string = {
             "SELECT DISTINCT ON (fizz, bazz) foo, bar \
             FROM test_table \
             INNER JOIN bar_table ON 1 == 1 \
             LEFT JOIN bazz_table ON 2 == 2 \
-            WHERE (foo == bar AND lala == blah) \
+            WHERE foo == bar AND lala == blah \
             GROUP BY foo, bar \
-            HAVING (foo == bar AND lala == blah) \
+            HAVING foo == bar AND lala == blah \
             ORDER BY bar DESC, foo ASC \
             LIMIT 10 \
             OFFSET 5 \
             FOR UPDATE OF foo, bar NOWAIT".to_string()
         };
+
+        assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
     }
 

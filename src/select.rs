@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum SelectType<'a> {
     All,
     Specific(Vec<&'a str>)

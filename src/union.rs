@@ -1,6 +1,6 @@
 use query::ToSQL;
 
-enum UnionType {
+enum UnionMode {
     Simple,
     All
 }
@@ -8,7 +8,17 @@ enum UnionType {
 struct Union<L: ToSQL, R: ToSQL> {
     left: L,
     right: R,
-    mode: UnionType
+    mode: UnionMode
+}
+
+impl<L: ToSQL, R:ToSQL> Union<L, R> {
+    fn new(mode: UnionMode, left: L, right: R) -> Self {
+        Union {
+            mode: mode,
+            left: left,
+            right: right
+        }
+    }
 }
 
 impl<L: ToSQL, R: ToSQL> ToSQL for Union<L, R> {
@@ -19,7 +29,7 @@ impl<L: ToSQL, R: ToSQL> ToSQL for Union<L, R> {
         rv.push_str("UNION");
         rv.push(' ');
 
-        if let UnionType::All = self.mode {
+        if let UnionMode::All = self.mode {
             rv.push_str("ALL");
             rv.push(' ');
         }
@@ -37,7 +47,7 @@ impl<'a, L: ToSQL, R:ToSQL> ToSQL for &'a Union<L, R> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Union, UnionType};
+    use super::{Union, UnionMode};
     use query::{ToSQL, Query};
     use select::SelectType;
     use distinct::DistinctType;
@@ -61,11 +71,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let union = Union {
-            left: &query,
-            right: &query,
-            mode: UnionType::Simple
-        };
+        let union = Union::new(UnionMode::Simple, &query, &query);
 
         let expected = {
             "SELECT * FROM test_table \
@@ -91,11 +97,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let union = Union {
-            left: query.clone(),
-            right: query,
-            mode: UnionType::Simple
-        };
+        let union = Union::new(UnionMode::Simple, query.clone(), query);
 
         let expected = {
             "SELECT * FROM test_table \
@@ -121,11 +123,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let union = Union {
-            left: &query,
-            right: &query,
-            mode: UnionType::All
-        };
+        let union = Union::new(UnionMode::All, &query, &query);
 
         let expected = {
             "SELECT * FROM test_table \
@@ -151,17 +149,8 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let pre_union = Union {
-            left: &query,
-            right: &query,
-            mode: UnionType::Simple
-        };
-
-        let union = Union {
-            left: &pre_union,
-            right: &query,
-            mode: UnionType::All
-        };
+        let pre_union = Union::new(UnionMode::Simple, &query, &query);
+        let union = Union::new(UnionMode::All, pre_union, &query);
 
         let expected = {
             "SELECT * FROM test_table \

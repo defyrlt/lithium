@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ForMode {
     Update,
     Share
@@ -13,7 +13,7 @@ impl ForMode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct For<'a> {
     pub mode: ForMode,
     pub tables: Vec<&'a str>,
@@ -42,7 +42,7 @@ impl<'a> For<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ForType<'a> {
     Empty,
     Specified(For<'a>)
