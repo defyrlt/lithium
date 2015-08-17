@@ -11,6 +11,35 @@ pub trait ToSQL {
     fn to_sql(&self) -> String;
 }
 
+pub trait Pusheable<T: Clone> {
+    fn push_to(&self, destination: &mut Vec<T>);
+}
+
+impl<T: Clone> Pusheable<T> for T {
+    fn push_to(&self, destination: &mut Vec<T>) {
+        destination.push(self.clone());
+    }
+}
+
+macro_rules! pusheable_impls {
+    ($($N: expr)+) => {
+        $(
+            impl<'a, T: Clone> Pusheable<T> for &'a [T; $N] {
+                fn push_to(&self, destination: &mut Vec<T>) {
+                    destination.extend(self.iter().cloned());
+                }
+            }   
+        )+
+    }
+}
+
+pusheable_impls! {
+     0  1  2  3  4  5  6  7  8  9
+    10 11 12 13 14 15 16 17 18 19
+    20 21 22 23 24 25 26 27 28 29
+    30 31 32
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Query<'a> {
     pub select: SelectType<'a>,
@@ -103,8 +132,8 @@ impl<'a> Query<'a> {
         self.push_join(JoinType::Outer, target, clause)
     }
 
-    pub fn group_by(mut self, field: &'a str) -> Self {
-        self.group_by.push(field);
+    pub fn group_by<T: Pusheable<&'a str>>(mut self, fields: T) -> Self {
+        fields.push_to(&mut self.group_by);
         self
     }
 
@@ -448,7 +477,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Query::new("test_table").group_by("foo").group_by("bar");
+        let built = Query::new("test_table").group_by(&["foo", "bar"]);
 
         let test_sql_string = {
             "SELECT * \
@@ -816,14 +845,14 @@ mod tests {
             .distinct_on("fizz").distinct_on("bazz")
             .join("bar_table", "1 == 1")
             .left_join("bazz_table", "2 == 2")
-            .group_by("foo").group_by("bar")
+            .group_by(&["foo", "bar"])
             .where_cl("foo == bar").where_cl("lala == blah")
             .having("foo == bar").having("lala == blah")
             .order_by("bar", Ordering::Descending)
             .order_by("foo", Ordering::Ascending)
             .limit("10")
             .offset("5")
-            .for_cl(For::update().table("foo").table("bar").nowait());
+            .for_cl(For::update().table(&["foo", "bar"]).nowait());
 
         let test_sql_string = {
             "SELECT DISTINCT ON (fizz, bazz) foo, bar \

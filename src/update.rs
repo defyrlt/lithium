@@ -43,7 +43,7 @@ impl<'a> Update<'a> {
     }
 
     pub fn push_expressions(mut self, expressions: &'a [&'a str]) -> Self {
-        self.expressions.extend(expressions.iter().cloned());
+        self.expressions.extend(expressions);
         self
     }
 
@@ -83,14 +83,13 @@ impl<'a> Update<'a> {
     }
 
     pub fn push_returning(mut self, expressions: &'a [&'a str]) -> Self {
-        let new = expressions.iter().cloned();
         match self.returning {
             ReturningType::Empty | ReturningType::All => {
                 let mut returning = Vec::new();
-                returning.extend(new);
+                returning.extend(expressions);
                 self.returning = ReturningType::Specified(returning);
             },
-            ReturningType::Specified(ref mut returning) => returning.extend(new)
+            ReturningType::Specified(ref mut returning) => returning.extend(expressions)
         }
         self
         

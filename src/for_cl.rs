@@ -1,3 +1,5 @@
+use query::Pusheable;
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum ForMode {
     Update,
@@ -37,8 +39,8 @@ impl<'a> For<'a> {
         Self::new(ForMode::Share)
     }
 
-    pub fn table(mut self, table: &'a str) -> Self {
-        self.tables.push(table);
+    pub fn table<T: Pusheable<&'a str>>(mut self, tables: T) -> Self {
+        tables.push_to(&mut self.tables);
         self
     }
 
@@ -111,7 +113,7 @@ mod tests {
             nowait: false
         };
 
-        let built = For::share().table("foo").table("bar");
+        let built = For::share().table(&["foo", "bar"]);
 
         assert!(for_cl == built);
         assert_eq!(for_cl.to_sql(), "FOR SHARE OF foo, bar")
