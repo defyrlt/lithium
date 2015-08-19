@@ -77,12 +77,14 @@ impl<'a> Query<'a> {
         self
     }
 
-    pub fn select(mut self, field: &'a str) -> Self {
+    pub fn select<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
         match self.select {
             SelectType::All => {
-                self.select = SelectType::Specific(vec![field]);
+                let mut fields = vec![];
+                input_fields.push_to(&mut fields);
+                self.select = SelectType::Specific(fields);
             },
-            SelectType::Specific(ref mut fields) => fields.push(field)
+            SelectType::Specific(ref mut fields) => input_fields.push_to(fields)
         }
         self
     }
@@ -97,12 +99,14 @@ impl<'a> Query<'a> {
         self
     }
 
-    pub fn distinct_on(mut self, field: &'a str) -> Self {
+    pub fn distinct_on<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
         match self.distinct {
             DistinctType::Empty | DistinctType::Simple => {
-                self.distinct = DistinctType::Extended(vec![field]);
+                let mut fields = vec![];
+                input_fields.push_to(&mut fields);
+                self.distinct = DistinctType::Extended(fields);
             },
-            DistinctType::Extended(ref mut fields) => fields.push(field)
+            DistinctType::Extended(ref mut fields) => input_fields.push_to(fields)
         }
         self
     }
@@ -841,8 +845,8 @@ mod tests {
         };
 
         let built = Query::new("test_table")
-            .select("foo").select("bar")
-            .distinct_on("fizz").distinct_on("bazz")
+            .select(&["foo", "bar"])
+            .distinct_on(&["fizz", "bazz"])
             .join("bar_table", "1 == 1")
             .left_join("bazz_table", "2 == 2")
             .group_by(&["foo", "bar"])
@@ -954,5 +958,24 @@ mod tests {
         };
 
         b.iter(|| query.to_sql());
+    }
+
+    #[bench]
+    fn bench_builder(b: &mut Bencher) {
+        b.iter(|| {
+            let _ = Query::new("test_table")
+                .select(&["foo", "bar"])
+                .distinct_on(&["fizz", "bazz"])
+                .join("bar_table", "1 == 1")
+                .left_join("bazz_table", "2 == 2")
+                .group_by(&["foo", "bar"])
+                .where_cl("foo == bar").where_cl("lala == blah")
+                .having("foo == bar").having("lala == blah")
+                .order_by("bar", Ordering::Descending)
+                .order_by("foo", Ordering::Ascending)
+                .limit("10")
+                .offset("5")
+                .for_cl(For::update().table(&["foo", "bar"]).nowait());
+        });
     }
 }

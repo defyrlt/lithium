@@ -1,4 +1,4 @@
-use query::ToSQL;
+use query::{ToSQL, Pusheable};
 use where_cl::{WhereType, IntoWhereType};
 
 // TODO: make it pretty
@@ -37,13 +37,8 @@ impl<'a> Update<'a> {
         }
     }
 
-    pub fn expression(mut self, expression: &'a str) -> Self {
-        self.expressions.push(expression);
-        self
-    }
-
-    pub fn push_expressions(mut self, expressions: &'a [&'a str]) -> Self {
-        self.expressions.extend(expressions);
+    pub fn set<T: Pusheable<&'a str>>(mut self, expressions: T) -> Self {
+        expressions.push_to(&mut self.expressions);
         self
     }
 
@@ -72,27 +67,16 @@ impl<'a> Update<'a> {
         self
     }
 
-    pub fn returning(mut self, expression: &'a str) -> Self {
+    pub fn returning<T: Pusheable<&'a str>>(mut self, input_expressions: T) -> Self {
         match self.returning {
             ReturningType::Empty | ReturningType::All => {
-                self.returning = ReturningType::Specified(vec![expression]);
+                let mut expressions = vec![];
+                input_expressions.push_to(&mut expressions);
+                self.returning = ReturningType::Specified(expressions);
             },
-            ReturningType::Specified(ref mut expressions) => expressions.push(expression)
+            ReturningType::Specified(ref mut expressions) => input_expressions.push_to(expressions)
         }
         self
-    }
-
-    pub fn push_returning(mut self, expressions: &'a [&'a str]) -> Self {
-        match self.returning {
-            ReturningType::Empty | ReturningType::All => {
-                let mut returning = Vec::new();
-                returning.extend(expressions);
-                self.returning = ReturningType::Specified(returning);
-            },
-            ReturningType::Specified(ref mut returning) => returning.extend(expressions)
-        }
-        self
-        
     }
 }
 
@@ -148,10 +132,9 @@ mod tests {
 
     #[test]
     fn smoke_test_builder() {
-        let exprs = ["b = 3", "c = 5"];
         let _upd = Update::new("test_table")
-            .expression("a = 2")
-            .push_expressions(&exprs)
+            .set("a = 2")
+            .set(&["b = 3", "c = 5"])
             .where_cl("a == 10")
             .from("yo")
             .clear_from()
@@ -171,7 +154,7 @@ mod tests {
             returning: ReturningType::Empty
         };
 
-        let built = Update::new("test_table").expression("a = 2").expression("b = 3");
+        let built = Update::new("test_table").set("a = 2").set("b = 3");
 
         let expected = {
             "UPDATE test_table \
@@ -193,8 +176,7 @@ mod tests {
         };
 
         let built = Update::new("test_table")
-            .expression("a = 2")
-            .expression("b = 3")
+            .set(&["a = 2", "b = 3"])
             .from("other_test_table")
             .where_cl("d == 3")
             .returning_all();
@@ -220,15 +202,13 @@ mod tests {
         let update = Update {
             table: "test_table",
             expressions: vec!["a = 2", "b = 3"],
-            from: FromType::Specified("other_test_table"),
+            from: FromType::Empty,
             where_cl: vec![where_cl.clone().into_where_type()],
             returning: ReturningType::Specified(vec!["a", "b"])
         };
 
         let built = Update::new("test_table")
-            .expression("a = 2")
-            .expression("b = 3")
-            .from("other_test_table")
+            .set(&["a = 2", "b = 3"])
             .where_cl(where_cl)
             .returning("a")
             .returning("b");
@@ -236,7 +216,6 @@ mod tests {
         let expected = {
             "UPDATE test_table \
             SET a = 2, b = 3 \
-            FROM other_test_table \
             WHERE \
             ((foo == bar AND fizz == bazz) OR \
             (a == b AND c == d)) \

@@ -1,4 +1,4 @@
-use query::{ToSQL, Query};
+use query::{ToSQL, Query, Pusheable};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Values<'a> {
@@ -61,17 +61,19 @@ impl<'a> Insert<'a> {
        }
     }
 
-    pub fn column(mut self, column: &'a str) -> Self {
-        self.columns.push(column);
+    pub fn columns<T: Pusheable<&'a str>>(mut self, columns: T) -> Self {
+        columns.push_to(&mut self.columns);
         self
     }
 
-    pub fn values(mut self, values: &'a str) -> Self {
+    pub fn values<T: Pusheable<&'a str>>(mut self, input_values: T) -> Self {
         match self.values {
             Values::Default | Values::Query(_) => {
-                self.values = Values::Specified(vec![values]);
+                let mut values = vec![];
+                input_values.push_to(&mut values);
+                self.values = Values::Specified(values);
             },
-            Values::Specified(ref mut values_list) => values_list.push(values)
+            Values::Specified(ref mut values) => input_values.push_to(values)
         }
         self
     }
@@ -91,12 +93,14 @@ impl<'a> Insert<'a> {
         self
     }
 
-    pub fn returning(mut self, field: &'a str) -> Self {
+    pub fn returning<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
         match self.returning {
             Returning::Empty | Returning::All => {
-                self.returning = Returning::Specified(vec![field]);
+                let mut fields = vec![];
+                input_fields.push_to(&mut fields);
+                self.returning = Returning::Specified(fields);
             },
-            Returning::Specified(ref mut fields) => fields.push(field)
+            Returning::Specified(ref mut fields) => input_fields.push_to(fields)
         };
         self
     }
@@ -189,9 +193,10 @@ mod tests {
         };
 
         let built = Insert::new("test_table")
-            .column("foo").column("bar")
+            .columns("foo")
+            .columns(&["bar"])
             .values("DEFAULT, fizz")
-            .values("foo, bar")
+            .values(&["foo, bar"])
             .returning_all();
 
         let expected = {
@@ -211,18 +216,18 @@ mod tests {
             table: "test_table",
             columns: vec!["foo", "bar"],
             values: Values::Query(query.clone()),
-            returning: Returning::All
+            returning: Returning::Specified(vec!["bar", "foo"])
         };
 
         let built = Insert::new("test_table")
-            .column("foo").column("bar")
+            .columns(&["foo", "bar"])
             .query(query)
-            .returning_all();
+            .returning(&["bar", "foo"]);
 
         let expected = {
             "INSERT INTO test_table (foo, bar) \
             SELECT * FROM test_table \
-            RETURNING *"
+            RETURNING bar, foo"
         };
         
         assert!(insert == built);
