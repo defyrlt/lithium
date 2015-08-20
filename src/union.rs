@@ -1,16 +1,24 @@
 use query::ToSQL;
 
-#[allow(dead_code)]
-enum UnionType {
+enum UnionMode {
     Simple,
     All
 }
 
-#[allow(dead_code)]
 struct Union<L: ToSQL, R: ToSQL> {
     left: L,
     right: R,
-    mode: UnionType
+    mode: UnionMode
+}
+
+impl<L: ToSQL, R:ToSQL> Union<L, R> {
+    fn new(mode: UnionMode, left: L, right: R) -> Self {
+        Union {
+            mode: mode,
+            left: left,
+            right: right
+        }
+    }
 }
 
 impl<L: ToSQL, R: ToSQL> ToSQL for Union<L, R> {
@@ -21,7 +29,7 @@ impl<L: ToSQL, R: ToSQL> ToSQL for Union<L, R> {
         rv.push_str("UNION");
         rv.push(' ');
 
-        if let UnionType::All = self.mode {
+        if let UnionMode::All = self.mode {
             rv.push_str("ALL");
             rv.push(' ');
         }
@@ -39,10 +47,9 @@ impl<'a, L: ToSQL, R:ToSQL> ToSQL for &'a Union<L, R> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Union, UnionType};
+    use super::{Union, UnionMode};
     use query::{ToSQL, Query};
     use select::SelectType;
-    use where_cl::WhereType;
     use distinct::DistinctType;
     use limit::LimitType;
     use offset::OffsetType;
@@ -54,21 +61,43 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
 
-        let union = Union {
-            left: &query,
-            right: &query,
-            mode: UnionType::Simple
+        let union = Union::new(UnionMode::Simple, &query, &query);
+
+        let expected = {
+            "SELECT * FROM test_table \
+            UNION \
+            SELECT * FROM test_table".to_string()
         };
+        assert_eq!(union.to_sql(), expected);
+    }
+
+    #[test]
+    fn test_owned_queries() {
+        let query = Query {
+            select: SelectType::All,
+            distinct: DistinctType::Empty,
+            from: "test_table",
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
+            limit: LimitType::Empty,
+            offset: OffsetType::Empty,
+            for_cl: ForType::Empty
+        };
+
+        let union = Union::new(UnionMode::Simple, query.clone(), query);
 
         let expected = {
             "SELECT * FROM test_table \
@@ -84,21 +113,17 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
 
-        let union = Union {
-            left: &query,
-            right: &query,
-            mode: UnionType::All
-        };
+        let union = Union::new(UnionMode::All, &query, &query);
 
         let expected = {
             "SELECT * FROM test_table \
@@ -114,27 +139,18 @@ mod tests {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
-            joins: &[],
-            group_by: &[],
-            order_by: &[],
-            where_cl: WhereType::Empty,
-            having: WhereType::Empty,
+            joins: vec![],
+            group_by: vec![],
+            order_by: vec![],
+            where_cl: vec![],
+            having: vec![],
             limit: LimitType::Empty,
             offset: OffsetType::Empty,
             for_cl: ForType::Empty
         };
 
-        let pre_union = Union {
-            left: &query,
-            right: &query,
-            mode: UnionType::Simple
-        };
-
-        let union = Union {
-            left: &pre_union,
-            right: &query,
-            mode: UnionType::All
-        };
+        let pre_union = Union::new(UnionMode::Simple, &query, &query);
+        let union = Union::new(UnionMode::All, pre_union, &query);
 
         let expected = {
             "SELECT * FROM test_table \

@@ -1,5 +1,7 @@
 #![allow(unused_features)]
+#![allow(dead_code)]
 #![feature(test)]
+#![feature(box_syntax, box_patterns)]
 mod query;
 mod select;
 mod join;

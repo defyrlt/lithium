@@ -1,4 +1,6 @@
-#[allow(dead_code)]
+use query::Pusheable;
+
+#[derive(Clone, PartialEq, Eq)]
 pub enum ForMode {
     Update,
     Share
@@ -13,10 +15,39 @@ impl ForMode {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct For<'a> {
     pub mode: ForMode,
-    pub tables: &'a [&'a str],
+    pub tables: Vec<&'a str>,
     pub nowait: bool,
+}
+
+impl<'a> For<'a> {
+    pub fn new(mode: ForMode) -> Self {
+        For {
+            mode: mode,
+            tables: vec![],
+            nowait: false
+        }
+    }
+
+    pub fn update() -> Self {
+        Self::new(ForMode::Update)
+    }
+
+    pub fn share() -> Self {
+        Self::new(ForMode::Share)
+    }
+
+    pub fn table<T: Pusheable<&'a str>>(mut self, tables: T) -> Self {
+        tables.push_to(&mut self.tables);
+        self
+    }
+
+    pub fn nowait(mut self) -> Self {
+        self.nowait = true;
+        self
+    }
 }
 
 impl<'a> For<'a> {
@@ -41,10 +72,10 @@ impl<'a> For<'a> {
     }
 }
 
-#[allow(dead_code)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ForType<'a> {
     Empty,
-    Specified(&'a For<'a>)
+    Specified(For<'a>)
 }
 
 #[cfg(test)]
@@ -64,10 +95,13 @@ mod tests {
     fn test_for() {
         let for_cl = For {
             mode: ForMode::Update,
-            tables: &[],
+            tables: vec![],
             nowait: false
         };
 
+        let built = For::update();
+
+        assert!(for_cl == built);
         assert_eq!(for_cl.to_sql(), "FOR UPDATE")
     }
 
@@ -75,10 +109,13 @@ mod tests {
     fn test_for_with_clause() {
         let for_cl = For {
             mode: ForMode::Share,
-            tables: &["foo", "bar"],
+            tables: vec!["foo", "bar"],
             nowait: false
         };
 
+        let built = For::share().table(&["foo", "bar"]);
+
+        assert!(for_cl == built);
         assert_eq!(for_cl.to_sql(), "FOR SHARE OF foo, bar")
     }
 
@@ -86,10 +123,13 @@ mod tests {
     fn test_for_with_clause_and_nowait() {
         let for_cl = For {
             mode: ForMode::Update,
-            tables: &["foo", "bar"],
+            tables: vec!["foo", "bar"],
             nowait: true
         };
 
+        let built = For::update().table("foo").table("bar").nowait();
+
+        assert!(for_cl == built);
         assert_eq!(for_cl.to_sql(), "FOR UPDATE OF foo, bar NOWAIT")
     }
 }
