@@ -1,4 +1,4 @@
-use query::Pusheable;
+use common::Pusheable;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum ForMode {

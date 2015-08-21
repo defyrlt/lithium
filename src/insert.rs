@@ -1,10 +1,11 @@
-use query::{ToSQL, Query, Pusheable};
+use select::Select;
+use common::{ToSQL, Pusheable};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Values<'a> {
     Default,
     Specified(Vec<&'a str>),
-    Query(Query<'a>)
+    Select(Select<'a>)
 }
 
 impl<'a> Values<'a> {
@@ -21,7 +22,7 @@ impl<'a> Values<'a> {
                             .join(", "));
                 rv
             },
-            Values::Query(ref query) => query.to_sql()
+            Values::Select(ref query) => query.to_sql()
         }
     }
 }
@@ -68,7 +69,7 @@ impl<'a> Insert<'a> {
 
     pub fn values<T: Pusheable<&'a str>>(mut self, input_values: T) -> Self {
         match self.values {
-            Values::Default | Values::Query(_) => {
+            Values::Default | Values::Select(_) => {
                 let mut values = vec![];
                 input_values.push_to(&mut values);
                 self.values = Values::Specified(values);
@@ -78,8 +79,8 @@ impl<'a> Insert<'a> {
         self
     }
 
-    pub fn query(mut self, query: Query<'a>) -> Self {
-        self.values = Values::Query(query);
+    pub fn query(mut self, query: Select<'a>) -> Self {
+        self.values = Values::Select(query);
         self
     }
 
@@ -140,7 +141,7 @@ impl<'a> Insert<'a> {
 #[cfg(test)]
 mod tests {
     use super::{Values, Insert, Returning};
-    use query::Query;
+    use select::Select;
 
     #[test]
     fn test_simple() {
@@ -211,11 +212,11 @@ mod tests {
 
     #[test]
     fn test_with_query() {
-        let query = Query::new("test_table");
+        let query = Select::new("test_table");
         let insert = Insert {
             table: "test_table",
             columns: vec!["foo", "bar"],
-            values: Values::Query(query.clone()),
+            values: Values::Select(query.clone()),
             returning: Returning::Specified(vec!["bar", "foo"])
         };
 

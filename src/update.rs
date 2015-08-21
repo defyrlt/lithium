@@ -1,4 +1,4 @@
-use query::{ToSQL, Pusheable};
+use common::{ToSQL, Pusheable};
 use where_cl::{WhereType, IntoWhereType};
 
 // TODO: make it pretty
@@ -127,7 +127,7 @@ impl<'a> ToSQL for Update<'a> {
 #[cfg(test)]
 mod tests {
     use super::{FromType, ReturningType, Update};
-    use query::ToSQL;
+    use common::ToSQL;
     use where_cl::{Operator, Where, IntoWhereType};
 
     #[test]

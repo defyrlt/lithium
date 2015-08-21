@@ -1,4 +1,4 @@
-use query::ToSQL;
+use common::ToSQL;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Operator {
@@ -91,7 +91,7 @@ impl<'a> ToSQL for Where<'a> {
 #[cfg(test)]
 mod tests {
     use super::{Operator, Where};
-    use query::ToSQL;
+    use common::ToSQL;
 
     #[test]
     fn test_operator() {
