@@ -5,6 +5,7 @@ pub mod order_by;
 pub mod limit;
 pub mod offset;
 pub mod for_cl;
+pub mod union;
 
 use common::{ToSQL, Pusheable};
 use where_cl::{WhereType, IntoWhereType};
@@ -33,7 +34,7 @@ pub struct Select<'a> {
 }
 
 impl<'a> Select<'a> {
-    pub fn new(from_table: &'a str) -> Self {
+    pub fn from(from_table: &'a str) -> Self {
         Select {
             select: SelectType::All,
             distinct: DistinctType::Empty,
@@ -283,7 +284,7 @@ mod tests {
     use self::test::Bencher;
 
     use common::{ToSQL};
-    use where_cl::{Operator, Where, IntoWhereType};
+    use where_cl::{Where, IntoWhereType};
 
     use super::Select;
     use super::select_type::SelectType;
@@ -310,7 +311,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table");
+        let built = Select::from("test_table");
 
         assert!(query == built);
         assert_eq!(query.to_sql(), "SELECT * FROM test_table".to_string());
@@ -332,7 +333,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").select("foo").select("bar");
+        let built = Select::from("test_table").select("foo").select("bar");
 
         assert!(query == built);
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
@@ -361,7 +362,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").join("target_table", "2 == 2");
+        let built = Select::from("test_table").join("target_table", "2 == 2");
 
         let test_sql_string = {
             "SELECT * \
@@ -401,7 +402,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table")
+        let built = Select::from("test_table")
             .join("bar_table", "1 == 1")
             .left_join("bazz_table", "2 == 2");
 
@@ -432,7 +433,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").group_by("foo");
+        let built = Select::from("test_table").group_by("foo");
 
         let test_sql_string = {
             "SELECT * \
@@ -460,7 +461,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").group_by(&["foo", "bar"]);
+        let built = Select::from("test_table").group_by(&["foo", "bar"]);
 
         let test_sql_string = {
             "SELECT * \
@@ -493,7 +494,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").order_by("foo", Ordering::Ascending);
+        let built = Select::from("test_table").order_by("foo", Ordering::Ascending);
 
         let test_sql_string = {
             "SELECT * \
@@ -531,7 +532,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table")
+        let built = Select::from("test_table")
             .order_by("foo", Ordering::Ascending)
             .order_by("bar", Ordering::Descending);
 
@@ -561,7 +562,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").where_cl("foo == bar");
+        let built = Select::from("test_table").where_cl("foo == bar");
 
         let test_sql_string = {
             "SELECT * \
@@ -589,7 +590,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").where_cl("foo == bar").where_cl("lala == blah");
+        let built = Select::from("test_table").where_cl("foo == bar").where_cl("lala == blah");
 
         let test_sql_string = {
             "SELECT * \
@@ -617,7 +618,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").having("foo == bar");
+        let built = Select::from("test_table").having("foo == bar");
 
         let test_sql_string = {
             "SELECT * \
@@ -645,7 +646,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").having("foo == bar").having("lala == blah");
+        let built = Select::from("test_table").having("foo == bar").having("lala == blah");
 
         let test_sql_string = {
             "SELECT * \
@@ -673,7 +674,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").distinct();
+        let built = Select::from("test_table").distinct();
 
         let test_sql_string = {
             "SELECT DISTINCT * \
@@ -700,7 +701,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::new("test_table").distinct_on("foo").distinct_on("bar");
+        let built = Select::from("test_table").distinct_on("foo").distinct_on("bar");
 
         let test_sql_string = {
             "SELECT DISTINCT ON (foo, bar) * \
@@ -733,7 +734,7 @@ mod tests {
             for_cl: ForType::Specified(for_foo)
         };
 
-        let built = Select::new("test_table").for_cl(For::update());
+        let built = Select::from("test_table").for_cl(For::update());
 
         let test_sql_string = {
             "SELECT * \
@@ -767,7 +768,7 @@ mod tests {
             for_cl: ForType::Specified(for_foo)
         };
 
-        let built = Select::new("test_table").for_cl(For::update().table("foo").table("bar"));
+        let built = Select::from("test_table").for_cl(For::update().table("foo").table("bar"));
 
         let test_sql_string = {
             "SELECT * \
@@ -823,7 +824,7 @@ mod tests {
             for_cl: ForType::Specified(for_bazz)
         };
 
-        let built = Select::new("test_table")
+        let built = Select::from("test_table")
             .select(&["foo", "bar"])
             .distinct_on(&["fizz", "bazz"])
             .join("bar_table", "1 == 1")
@@ -857,7 +858,7 @@ mod tests {
 
     #[bench]
     fn bench_query_with_extended_where(b: &mut Bencher) {
-        let where_cl = Where::new(Operator::And).clause("foo == bar").clause("lala == blah");
+        let where_cl = Where::with_and().clause("foo == bar").clause("lala == blah");
 
         let order_by_bar_desc = OrderBy {
             ordering: Ordering::Descending,
@@ -942,7 +943,7 @@ mod tests {
     #[bench]
     fn bench_builder(b: &mut Bencher) {
         b.iter(|| {
-            let _ = Select::new("test_table")
+            let _ = Select::from("test_table")
                 .select(&["foo", "bar"])
                 .distinct_on(&["fizz", "bazz"])
                 .join("bar_table", "1 == 1")

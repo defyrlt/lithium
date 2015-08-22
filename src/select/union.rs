@@ -1,11 +1,11 @@
-use query::ToSQL;
+use common::ToSQL;
 
-enum UnionMode {
+pub enum UnionMode {
     Simple,
     All
 }
 
-struct Union<L: ToSQL, R: ToSQL> {
+pub struct Union<L: ToSQL, R: ToSQL> {
     left: L,
     right: R,
     mode: UnionMode
@@ -33,7 +33,7 @@ impl<L: ToSQL, R: ToSQL> ToSQL for Union<L, R> {
             rv.push_str("ALL");
             rv.push(' ');
         }
-        
+
         rv.push_str(&self.right.to_sql());
         rv
     }
@@ -48,16 +48,12 @@ impl<'a, L: ToSQL, R:ToSQL> ToSQL for &'a Union<L, R> {
 #[cfg(test)]
 mod tests {
     use super::{Union, UnionMode};
-    use query::{ToSQL, Query};
-    use select::SelectType;
-    use distinct::DistinctType;
-    use limit::LimitType;
-    use offset::OffsetType;
-    use for_cl::ForType;
+    use common::ToSQL;
+    use select::{Select, SelectType, DistinctType, LimitType, OffsetType, ForType};
 
     #[test]
     fn test_simple() {
-        let query = Query {
+        let query = Select {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
@@ -83,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_owned_queries() {
-        let query = Query {
+        let query = Select {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
@@ -109,7 +105,7 @@ mod tests {
 
     #[test]
     fn test_union_all() {
-        let query = Query {
+        let query = Select {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
@@ -135,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_nested() {
-        let query = Query {
+        let query = Select {
             select: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",

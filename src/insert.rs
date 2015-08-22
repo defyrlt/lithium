@@ -53,7 +53,7 @@ struct Insert<'a> {
 }
 
 impl<'a> Insert<'a> {
-    pub fn new(table: &'a str) -> Self {
+    pub fn into(table: &'a str) -> Self {
        Insert {
            table: table,
            columns: vec![],
@@ -152,7 +152,7 @@ mod tests {
             returning: Returning::Empty,
         };
 
-        let built = Insert::new("test_table");
+        let built = Insert::into("test_table");
 
         let expected = {
             "INSERT INTO test_table \
@@ -172,7 +172,7 @@ mod tests {
             returning: Returning::Specified(vec!["foo", "bar"])
         };
 
-        let built = Insert::new("test_table").returning("foo").returning("bar");
+        let built = Insert::into("test_table").returning("foo").returning("bar");
 
         let expected = {
             "INSERT INTO test_table \
@@ -193,7 +193,7 @@ mod tests {
             returning: Returning::All
         };
 
-        let built = Insert::new("test_table")
+        let built = Insert::into("test_table")
             .columns("foo")
             .columns(&["bar"])
             .values("DEFAULT, fizz")
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_with_query() {
-        let query = Select::new("test_table");
+        let query = Select::from("test_table");
         let insert = Insert {
             table: "test_table",
             columns: vec!["foo", "bar"],
@@ -220,7 +220,7 @@ mod tests {
             returning: Returning::Specified(vec!["bar", "foo"])
         };
 
-        let built = Insert::new("test_table")
+        let built = Insert::into("test_table")
             .columns(&["foo", "bar"])
             .query(query)
             .returning(&["bar", "foo"]);

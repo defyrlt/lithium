@@ -128,7 +128,7 @@ impl<'a> ToSQL for Update<'a> {
 mod tests {
     use super::{FromType, ReturningType, Update};
     use common::ToSQL;
-    use where_cl::{Operator, Where, IntoWhereType};
+    use where_cl::{Where, IntoWhereType};
 
     #[test]
     fn smoke_test_builder() {
@@ -195,9 +195,9 @@ mod tests {
 
     #[test]
     fn test_returning_some() {
-        let foo = Where::new(Operator::And).clause("foo == bar").clause("fizz == bazz");
-        let bar = Where::new(Operator::And).clause("a == b").clause("c == d");
-        let where_cl = Where::new(Operator::Or).clause(foo).clause(bar);
+        let foo = Where::with_and().clause("foo == bar").clause("fizz == bazz");
+        let bar = Where::with_and().clause("a == b").clause("c == d");
+        let where_cl = Where::with_or().clause(foo).clause(bar);
 
         let update = Update {
             table: "test_table",
@@ -211,7 +211,7 @@ mod tests {
             .set(&["a = 2", "b = 3"])
             .where_cl(where_cl)
             .returning("a")
-            .returning("b");
+            .returning(&["b"]);
 
         let expected = {
             "UPDATE test_table \
