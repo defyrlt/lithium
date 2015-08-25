@@ -1,6 +1,9 @@
 use select::Select;
 use common::{ToSQL, Pusheable};
 
+// TODO: make it pretty
+const RETURNING: &'static str = " RETURNING ";
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum Values<'a> {
     Default,
@@ -32,16 +35,6 @@ pub enum Returning<'a> {
     Empty,
     All,
     Specified(Vec<&'a str>)
-}
-
-impl<'a> Returning<'a> {
-    pub fn to_sql(&self) -> String {
-        match *self {
-            Returning::All => "*".to_string(),
-            Returning::Specified(ref values) => values.join(", "),
-            Returning::Empty => unreachable!()
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -125,14 +118,16 @@ impl<'a> Insert<'a> {
         rv.push_str(&self.values.to_sql());
 
         match self.returning {
-            Returning::All | Returning::Specified(_) => {
-                rv.push(' ');
-                rv.push_str("RETURNING");
-                rv.push(' ');
-                rv.push_str(&self.returning.to_sql());
+            Returning::Empty => {},
+            Returning::All => {
+                rv.push_str(RETURNING);
+                rv.push('*');
             },
-            Returning::Empty => {}
-        }
+            Returning::Specified(ref values) => {
+                rv.push_str(RETURNING);
+                rv.push_str(&values.join(", "));
+            }
+        };
 
         rv
     }
