@@ -18,9 +18,27 @@ pub use self::limit::LimitType;
 pub use self::offset::OffsetType;
 pub use self::for_cl::{For, ForType};
 
+///
+/// # Examples
+/// Simple "select all":
+///
+/// ```
+/// use lithium::{ToSQL, Select};
+/// let query = Select::from("test_table");
+/// assert_eq!(query.to_sql(), "SELECT * FROM test_table");
+/// ```
+///
+/// Selecting some fields:
+///
+/// ```
+/// use lithium::{ToSQL, Select};
+/// // you can pass &str or &[&str] into `fields` method
+/// let query = Select::from("test_table").fields("foo").fields(&["bar", "bazz"]);
+/// assert_eq!(query.to_sql(), "SELECT foo, bar, bazz FROM test_table");
+/// ```
 #[derive(Clone, PartialEq, Eq)]
 pub struct Select<'a> {
-    pub select: SelectType<'a>,
+    pub select_type: SelectType<'a>,
     pub distinct: DistinctType<'a>,
     pub from: &'a str,
     pub joins: Vec<Join<'a>>,
@@ -34,9 +52,15 @@ pub struct Select<'a> {
 }
 
 impl<'a> Select<'a> {
+    /// Method to start with.
+    /// # Example
+    /// ```
+    /// use lithium::Select;
+    /// let query = Select::from("test_table");
+    /// ```
     pub fn from(from_table: &'a str) -> Self {
         Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: from_table,
             joins: vec![],
@@ -50,33 +74,52 @@ impl<'a> Select<'a> {
         }
     }
 
+    /// Will result in `SELECT * ...`
     pub fn select_all(mut self) -> Self {
-        self.select = SelectType::All;
+        self.select_type = SelectType::All;
         self
     }
 
-    pub fn select<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
-        match self.select {
+    /// This method is used to specify desired `SELECT` fields.
+    /// It can receive `&str` or `&[&str]`
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::Select;
+    /// let query = Select::from("test_table").fields("blah").fields(&["foo", "bar"]);
+    /// ```
+    pub fn fields<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
+        match self.select_type {
             SelectType::All => {
                 let mut fields = vec![];
                 input_fields.push_to(&mut fields);
-                self.select = SelectType::Specific(fields);
+                self.select_type = SelectType::Specific(fields);
             },
             SelectType::Specific(ref mut fields) => input_fields.push_to(fields)
         }
         self
     }
 
+    /// Removes distinct preference from query
     pub fn clear_distinct(mut self) -> Self {
         self.distinct = DistinctType::Empty;
         self
     }
 
+    /// Will result in `SELECT DISTINCT ...`
     pub fn distinct(mut self) -> Self {
         self.distinct = DistinctType::Simple;
         self
     }
 
+    /// Wil result in `SELECT DISTINCT ON (...) ...`
+    /// This method can receive `&str`  or `&[&str]`
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::Select;
+    /// let query = Select::from("test_table").distinct_on("blah").distinct_on(&["foo", "bar"]);
+    /// ```
     pub fn distinct_on<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
         match self.distinct {
             DistinctType::Empty | DistinctType::Simple => {
@@ -89,7 +132,7 @@ impl<'a> Select<'a> {
         self
     }
 
-    pub fn push_join(mut self, join_type: JoinType, target: &'a str, clause: &'a str) -> Self {
+    fn push_join(mut self, join_type: JoinType, target: &'a str, clause: &'a str) -> Self {
         self.joins.push(Join {
             join_type: join_type,
             target: target,
@@ -98,27 +141,53 @@ impl<'a> Select<'a> {
         self
     }
 
+    /// Appends `INNER JOIN` into query
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::Select;
+    /// let query = Select::from("test_table")
+    ///     .join("another_table", "another_table.a == test_table.a");
+    /// ```
     pub fn join(self, target: &'a str, clause: &'a str) -> Self {
         self.push_join(JoinType::Inner, target, clause)
     }
 
+    /// Appeds `LEFT JOIN` into query
     pub fn left_join(self, target: &'a str, clause: &'a str) -> Self {
         self.push_join(JoinType::Left, target, clause)
     }
 
+    /// Appends `RIGHT JOIN` into query
     pub fn right_join(self, target: &'a str, clause: &'a str) -> Self {
         self.push_join(JoinType::Right, target, clause)
     }
 
+    /// Appends `OUTER JOIN` into query
     pub fn outer_join(self, target: &'a str, clause: &'a str) -> Self {
         self.push_join(JoinType::Outer, target, clause)
     }
 
+    /// Appends a `GROUP BY` clause
+    /// This method can receive `&str`  or `&[&str]`
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::Select;
+    /// let query = Select::from("test_table").group_by("blah").group_by(&["foo", "bar"]);
+    /// ```
     pub fn group_by<T: Pusheable<&'a str>>(mut self, fields: T) -> Self {
         fields.push_to(&mut self.group_by);
         self
     }
 
+    /// Appends a `GROUP BY` clause
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::{Select, Ordering};
+    /// let query = Select::from("test_table").order_by("foo", Ordering::Ascending);
+    /// ```
     pub fn order_by(mut self, field: &'a str, ordering: Ordering) -> Self {
         self.order_by.push(OrderBy {
             ordering: ordering,
@@ -127,6 +196,23 @@ impl<'a> Select<'a> {
         self
     }
 
+    /// Appends a `WHERE` clause
+    /// # Examples
+    /// Clauses are connected with `AND` by default.
+    ///
+    /// ```
+    /// use lithium::{Select, ToSQL};
+    /// let query = Select::from("test_table").where_cl("foo == bar").where_cl("bar == bazz");
+    /// assert_eq!(query.to_sql(), "SELECT * FROM test_table WHERE foo == bar AND bar == bazz".to_owned());
+    /// ```
+    ///
+    /// That's how you can use `OR`:
+    ///
+    /// ```
+    /// use lithium::{Select, Where};
+    /// let query = Select::from("test_table")
+    ///     .where_cl(Where::with_or().clause("foo == bar").clause("bar == bazz"));
+    /// ```
     pub fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.where_cl.push(clause.into_where_type());
         self
@@ -190,7 +276,7 @@ impl<'a> ToSQL for Select<'a> {
         }
 
         rv.push(' ');
-        rv.push_str(&self.select.to_sql());
+        rv.push_str(&self.select_type.to_sql());
         rv.push(' ');
         rv.push_str("FROM");
         rv.push(' ');
@@ -298,7 +384,7 @@ mod tests {
     #[test]
     fn select_all() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -320,7 +406,7 @@ mod tests {
     #[test]
     fn select_foo_and_bar() {
         let query = Select {
-            select: SelectType::Specific(vec!["foo", "bar"]),
+            select_type: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -333,7 +419,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::from("test_table").select("foo").select("bar");
+        let built = Select::from("test_table").fields("foo").fields("bar");
 
         assert!(query == built);
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
@@ -349,7 +435,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![join],
@@ -389,7 +475,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![bar_join, bazz_join],
@@ -420,7 +506,7 @@ mod tests {
     #[test]
     fn select_all_and_group_by_foo() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -448,7 +534,7 @@ mod tests {
     #[test]
     fn select_all_and_group_by_foo_and_bar() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -481,7 +567,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -519,7 +605,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -549,7 +635,7 @@ mod tests {
     #[test]
     fn select_all_where_simple() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -577,7 +663,7 @@ mod tests {
     #[test]
     fn select_all_where_extended() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -605,7 +691,7 @@ mod tests {
     #[test]
     fn select_all_with_having() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -633,7 +719,7 @@ mod tests {
     #[test]
     fn select_all_with_extended_having() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -661,7 +747,7 @@ mod tests {
     #[test]
     fn select_all_distinct_simple() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Simple,
             from: "test_table",
             joins: vec![],
@@ -688,7 +774,7 @@ mod tests {
     #[test]
     fn select_all_distinct_extended() {
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Extended(vec!["foo", "bar"]),
             from: "test_table",
             joins: vec![],
@@ -721,7 +807,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -755,7 +841,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::All,
+            select_type: SelectType::All,
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![],
@@ -811,7 +897,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::Specific(vec!["foo", "bar"]),
+            select_type: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Extended(vec!["fizz", "bazz"]),
             from: "test_table",
             joins: vec![bar_join, bazz_join],
@@ -825,7 +911,7 @@ mod tests {
         };
 
         let built = Select::from("test_table")
-            .select(&["foo", "bar"])
+            .fields(&["foo", "bar"])
             .distinct_on(&["fizz", "bazz"])
             .join("bar_table", "1 == 1")
             .left_join("bazz_table", "2 == 2")
@@ -883,7 +969,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::Specific(vec!["foo", "bar"]),
+            select_type: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![bar_join, bazz_join],
@@ -924,7 +1010,7 @@ mod tests {
         };
 
         let query = Select {
-            select: SelectType::Specific(vec!["foo", "bar"]),
+            select_type: SelectType::Specific(vec!["foo", "bar"]),
             distinct: DistinctType::Empty,
             from: "test_table",
             joins: vec![bar_join, bazz_join],
@@ -944,7 +1030,7 @@ mod tests {
     fn bench_builder(b: &mut Bencher) {
         b.iter(|| {
             let _ = Select::from("test_table")
-                .select(&["foo", "bar"])
+                .fields(&["foo", "bar"])
                 .distinct_on(&["fizz", "bazz"])
                 .join("bar_table", "1 == 1")
                 .left_join("bazz_table", "2 == 2")
