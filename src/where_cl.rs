@@ -1,4 +1,4 @@
-use query::ToSQL;
+use common::ToSQL;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Operator {
@@ -34,6 +34,14 @@ impl<'a> Where<'a> {
             operator: operator,
             clauses: vec![]
         }
+    }
+    
+    pub fn with_and() -> Self {
+        Self::new(Operator::And)
+    }
+
+    pub fn with_or() -> Self {
+        Self::new(Operator::Or)
     }
 
     pub fn clause<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
@@ -91,7 +99,7 @@ impl<'a> ToSQL for Where<'a> {
 #[cfg(test)]
 mod tests {
     use super::{Operator, Where};
-    use query::ToSQL;
+    use common::ToSQL;
 
     #[test]
     fn test_operator() {
@@ -110,9 +118,9 @@ mod tests {
 
     #[test]
     fn test_nested_where_clauses() {
-        let clause = Where::new(Operator::Or)
-            .clause(Where::new(Operator::And).clause("foo == bar").clause("fizz == bazz"))
-            .clause(Where::new(Operator::And).clause("a == b").clause("c == d"));
+        let clause = Where::with_or()
+            .clause(Where::with_and().clause("foo == bar").clause("fizz == bazz"))
+            .clause(Where::with_and().clause("a == b").clause("c == d"));
 
         let test_sql_string = {
             "((foo == bar AND fizz == bazz) OR \
@@ -123,11 +131,11 @@ mod tests {
 
     #[test]
     fn test_really_nested_where_clauses() {
-        let foo = Where::new(Operator::And).clause("foo == bar").clause("fizz == bazz");
-        let bar = Where::new(Operator::And).clause("a == b").clause("c == d");
-        let bazz1 = Where::new(Operator::Or).clause(foo.clone()).clause(bar.clone());
-        let bazz2 = Where::new(Operator::Or).clause(bar.clone()).clause(foo.clone());
-        let fizz = Where::new(Operator::And).clause(bazz1).clause(bazz2);
+        let foo = Where::with_and().clause("foo == bar").clause("fizz == bazz");
+        let bar = Where::with_and().clause("a == b").clause("c == d");
+        let bazz1 = Where::with_or().clause(foo.clone()).clause(bar.clone());
+        let bazz2 = Where::with_or().clause(bar.clone()).clause(foo.clone());
+        let fizz = Where::with_and().clause(bazz1).clause(bazz2);
 
         let test_sql_string = {
             "(((foo == bar AND fizz == bazz) OR \

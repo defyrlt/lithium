@@ -1,10 +1,14 @@
-use query::{ToSQL, Query, Pusheable};
+use select::Select;
+use common::{ToSQL, Pusheable};
+
+// TODO: make it pretty
+const RETURNING: &'static str = " RETURNING ";
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Values<'a> {
     Default,
     Specified(Vec<&'a str>),
-    Query(Query<'a>)
+    Select(Select<'a>)
 }
 
 impl<'a> Values<'a> {
@@ -21,7 +25,7 @@ impl<'a> Values<'a> {
                             .join(", "));
                 rv
             },
-            Values::Query(ref query) => query.to_sql()
+            Values::Select(ref query) => query.to_sql()
         }
     }
 }
@@ -33,16 +37,6 @@ pub enum Returning<'a> {
     Specified(Vec<&'a str>)
 }
 
-impl<'a> Returning<'a> {
-    pub fn to_sql(&self) -> String {
-        match *self {
-            Returning::All => "*".to_string(),
-            Returning::Specified(ref values) => values.join(", "),
-            Returning::Empty => unreachable!()
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq)]
 struct Insert<'a> {
     table: &'a str,
@@ -52,7 +46,7 @@ struct Insert<'a> {
 }
 
 impl<'a> Insert<'a> {
-    pub fn new(table: &'a str) -> Self {
+    pub fn into(table: &'a str) -> Self {
        Insert {
            table: table,
            columns: vec![],
@@ -68,7 +62,7 @@ impl<'a> Insert<'a> {
 
     pub fn values<T: Pusheable<&'a str>>(mut self, input_values: T) -> Self {
         match self.values {
-            Values::Default | Values::Query(_) => {
+            Values::Default | Values::Select(_) => {
                 let mut values = vec![];
                 input_values.push_to(&mut values);
                 self.values = Values::Specified(values);
@@ -78,8 +72,8 @@ impl<'a> Insert<'a> {
         self
     }
 
-    pub fn query(mut self, query: Query<'a>) -> Self {
-        self.values = Values::Query(query);
+    pub fn query(mut self, query: Select<'a>) -> Self {
+        self.values = Values::Select(query);
         self
     }
 
@@ -124,14 +118,16 @@ impl<'a> Insert<'a> {
         rv.push_str(&self.values.to_sql());
 
         match self.returning {
-            Returning::All | Returning::Specified(_) => {
-                rv.push(' ');
-                rv.push_str("RETURNING");
-                rv.push(' ');
-                rv.push_str(&self.returning.to_sql());
+            Returning::Empty => {},
+            Returning::All => {
+                rv.push_str(RETURNING);
+                rv.push('*');
             },
-            Returning::Empty => {}
-        }
+            Returning::Specified(ref values) => {
+                rv.push_str(RETURNING);
+                rv.push_str(&values.join(", "));
+            }
+        };
 
         rv
     }
@@ -140,7 +136,7 @@ impl<'a> Insert<'a> {
 #[cfg(test)]
 mod tests {
     use super::{Values, Insert, Returning};
-    use query::Query;
+    use select::Select;
 
     #[test]
     fn test_simple() {
@@ -151,7 +147,7 @@ mod tests {
             returning: Returning::Empty,
         };
 
-        let built = Insert::new("test_table");
+        let built = Insert::into("test_table");
 
         let expected = {
             "INSERT INTO test_table \
@@ -171,7 +167,7 @@ mod tests {
             returning: Returning::Specified(vec!["foo", "bar"])
         };
 
-        let built = Insert::new("test_table").returning("foo").returning("bar");
+        let built = Insert::into("test_table").returning("foo").returning("bar");
 
         let expected = {
             "INSERT INTO test_table \
@@ -192,7 +188,7 @@ mod tests {
             returning: Returning::All
         };
 
-        let built = Insert::new("test_table")
+        let built = Insert::into("test_table")
             .columns("foo")
             .columns(&["bar"])
             .values("DEFAULT, fizz")
@@ -211,15 +207,15 @@ mod tests {
 
     #[test]
     fn test_with_query() {
-        let query = Query::new("test_table");
+        let query = Select::from("test_table");
         let insert = Insert {
             table: "test_table",
             columns: vec!["foo", "bar"],
-            values: Values::Query(query.clone()),
+            values: Values::Select(query.clone()),
             returning: Returning::Specified(vec!["bar", "foo"])
         };
 
-        let built = Insert::new("test_table")
+        let built = Insert::into("test_table")
             .columns(&["foo", "bar"])
             .query(query)
             .returning(&["bar", "foo"]);

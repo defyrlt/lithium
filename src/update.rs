@@ -1,4 +1,4 @@
-use query::{ToSQL, Pusheable};
+use common::{ToSQL, Pusheable};
 use where_cl::{WhereType, IntoWhereType};
 
 // TODO: make it pretty
@@ -11,7 +11,7 @@ enum FromType<'a> {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-enum ReturningType<'a> {
+enum Returning<'a> {
     Empty,
     All,
     Specified(Vec<&'a str>)
@@ -23,7 +23,7 @@ struct Update<'a> {
     expressions: Vec<&'a str>,
     from: FromType<'a>,
     where_cl: Vec<WhereType<'a>>,
-    returning: ReturningType<'a>
+    returning: Returning<'a>
 }
 
 impl<'a> Update<'a> {
@@ -33,7 +33,7 @@ impl<'a> Update<'a> {
             expressions: vec![],
             from: FromType::Empty,
             where_cl: vec![],
-            returning: ReturningType::Empty
+            returning: Returning::Empty
         }
     }
 
@@ -58,23 +58,23 @@ impl<'a> Update<'a> {
     }
 
     pub fn empty_returning(mut self) -> Self {
-        self.returning = ReturningType::Empty;
+        self.returning = Returning::Empty;
         self
     }
 
     pub fn returning_all(mut self) -> Self {
-        self.returning = ReturningType::All;
+        self.returning = Returning::All;
         self
     }
 
     pub fn returning<T: Pusheable<&'a str>>(mut self, input_expressions: T) -> Self {
         match self.returning {
-            ReturningType::Empty | ReturningType::All => {
+            Returning::Empty | Returning::All => {
                 let mut expressions = vec![];
                 input_expressions.push_to(&mut expressions);
-                self.returning = ReturningType::Specified(expressions);
+                self.returning = Returning::Specified(expressions);
             },
-            ReturningType::Specified(ref mut expressions) => input_expressions.push_to(expressions)
+            Returning::Specified(ref mut expressions) => input_expressions.push_to(expressions)
         }
         self
     }
@@ -109,12 +109,12 @@ impl<'a> ToSQL for Update<'a> {
         }
 
         match self.returning {
-            ReturningType::Empty => {},
-            ReturningType::All => {
+            Returning::Empty => {},
+            Returning::All => {
                 rv.push_str(RETURNING);
                 rv.push('*');
             },
-            ReturningType::Specified(ref values) => {
+            Returning::Specified(ref values) => {
                 rv.push_str(RETURNING);
                 rv.push_str(&values.join(", "));
             }
@@ -126,9 +126,9 @@ impl<'a> ToSQL for Update<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{FromType, ReturningType, Update};
-    use query::ToSQL;
-    use where_cl::{Operator, Where, IntoWhereType};
+    use super::{FromType, Returning, Update};
+    use common::ToSQL;
+    use where_cl::{Where, IntoWhereType};
 
     #[test]
     fn smoke_test_builder() {
@@ -151,7 +151,7 @@ mod tests {
             expressions: vec!["a = 2", "b = 3"],
             from: FromType::Empty,
             where_cl: vec![],
-            returning: ReturningType::Empty
+            returning: Returning::Empty
         };
 
         let built = Update::new("test_table").set("a = 2").set("b = 3");
@@ -172,7 +172,7 @@ mod tests {
             expressions: vec!["a = 2", "b = 3"],
             from: FromType::Specified("other_test_table"),
             where_cl: vec!["d == 3".into_where_type()],
-            returning: ReturningType::All
+            returning: Returning::All
         };
 
         let built = Update::new("test_table")
@@ -195,23 +195,23 @@ mod tests {
 
     #[test]
     fn test_returning_some() {
-        let foo = Where::new(Operator::And).clause("foo == bar").clause("fizz == bazz");
-        let bar = Where::new(Operator::And).clause("a == b").clause("c == d");
-        let where_cl = Where::new(Operator::Or).clause(foo).clause(bar);
+        let foo = Where::with_and().clause("foo == bar").clause("fizz == bazz");
+        let bar = Where::with_and().clause("a == b").clause("c == d");
+        let where_cl = Where::with_or().clause(foo).clause(bar);
 
         let update = Update {
             table: "test_table",
             expressions: vec!["a = 2", "b = 3"],
             from: FromType::Empty,
             where_cl: vec![where_cl.clone().into_where_type()],
-            returning: ReturningType::Specified(vec!["a", "b"])
+            returning: Returning::Specified(vec!["a", "b"])
         };
 
         let built = Update::new("test_table")
             .set(&["a = 2", "b = 3"])
             .where_cl(where_cl)
             .returning("a")
-            .returning("b");
+            .returning(&["b"]);
 
         let expected = {
             "UPDATE test_table \

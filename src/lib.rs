@@ -1,16 +1,8 @@
 #![allow(unused_features)]
 #![allow(dead_code)]
 #![feature(test)]
-#![feature(box_syntax, box_patterns)]
-mod query;
-mod select;
-mod join;
-mod order_by;
-mod where_cl;
-mod distinct;
-mod limit;
-mod offset;
-mod for_cl;
-mod union;
-mod insert;
-mod update;
+pub mod common;
+pub mod select;
+pub mod where_cl;
+pub mod update;
+pub mod insert;
