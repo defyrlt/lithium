@@ -39,7 +39,7 @@ impl<'a> For<'a> {
         Self::new(ForMode::Share)
     }
 
-    pub fn table<T: Pusheable<&'a str>>(mut self, tables: T) -> Self {
+    pub fn table<T: Pusheable<'a>>(mut self, tables: T) -> Self {
         tables.push_to(&mut self.tables);
         self
     }

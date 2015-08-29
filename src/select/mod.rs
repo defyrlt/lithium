@@ -7,7 +7,7 @@ pub mod offset;
 pub mod for_cl;
 pub mod union;
 
-use common::{ToSQL, Pusheable};
+use common::{ToSQL, AsStr, Pusheable, Subquery};
 use where_cl::{WhereType, IntoWhereType};
 
 pub use self::select_type::SelectType;
@@ -18,6 +18,7 @@ pub use self::limit::LimitType;
 pub use self::offset::OffsetType;
 pub use self::for_cl::{For, ForType};
 
+/// Represents `SELECT` query.
 ///
 /// # Examples
 /// Simple "select all":
@@ -53,16 +54,26 @@ pub struct Select<'a> {
 
 impl<'a> Select<'a> {
     /// Method to start with.
-    /// # Example
+    ///
+    /// # Examples
+    ///
     /// ```
     /// use lithium::Select;
     /// let query = Select::from("test_table");
     /// ```
-    pub fn from(from_table: &'a str) -> Self {
+    ///
+    /// You could pass a subquery into `from`
+    ///
+    /// ```
+    /// use lithium::Select;
+    /// let subquery = Select::from("foo_table").as_subquery().with_alias("foo");
+    /// let query = Select::from(&subquery);
+    /// ```
+    pub fn from<T: AsStr<'a>>(from_table: T) -> Self {
         Select {
             select_type: SelectType::All,
             distinct: DistinctType::Empty,
-            from: from_table,
+            from: from_table.as_str(),
             joins: vec![],
             group_by: vec![],
             order_by: vec![],
@@ -74,21 +85,22 @@ impl<'a> Select<'a> {
         }
     }
 
-    /// Will result in `SELECT * ...`
+    /// Will result in `SELECT * ...` (which is a default behaviour).
     pub fn select_all(mut self) -> Self {
         self.select_type = SelectType::All;
         self
     }
 
     /// This method is used to specify desired `SELECT` fields.
-    /// It can receive `&str` or `&[&str]`
+    /// It can receive either `&str` or `&[&str]`
+    ///
     /// # Example
     ///
     /// ```
     /// use lithium::Select;
     /// let query = Select::from("test_table").fields("blah").fields(&["foo", "bar"]);
     /// ```
-    pub fn fields<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
+    pub fn fields<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
         match self.select_type {
             SelectType::All => {
                 let mut fields = vec![];
@@ -100,8 +112,8 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Removes distinct preference from query
-    pub fn clear_distinct(mut self) -> Self {
+    /// Removes `DISTINCT` clause from query.
+    pub fn remove_distinct(mut self) -> Self {
         self.distinct = DistinctType::Empty;
         self
     }
@@ -112,15 +124,15 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Wil result in `SELECT DISTINCT ON (...) ...`
-    /// This method can receive `&str`  or `&[&str]`
+    /// Will result in `SELECT DISTINCT ON (...) ...`
+    ///
     /// # Example
     ///
     /// ```
     /// use lithium::Select;
     /// let query = Select::from("test_table").distinct_on("blah").distinct_on(&["foo", "bar"]);
     /// ```
-    pub fn distinct_on<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
+    pub fn distinct_on<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
         match self.distinct {
             DistinctType::Empty | DistinctType::Simple => {
                 let mut fields = vec![];
@@ -132,60 +144,67 @@ impl<'a> Select<'a> {
         self
     }
 
-    fn push_join(mut self, join_type: JoinType, target: &'a str, clause: &'a str) -> Self {
+    fn push_join<T: AsStr<'a>>(mut self, join_type: JoinType, target: T, clause: &'a str) -> Self {
         self.joins.push(Join {
             join_type: join_type,
-            target: target,
-            clause: clause
+            target: target.as_str(),
+            clause: clause.as_str(),
         });
         self
     }
 
-    /// Appends `INNER JOIN` into query
-    /// # Example
+    /// Appends `INNER JOIN` into query. Could receive a subquery as `target`.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use lithium::Select;
     /// let query = Select::from("test_table")
     ///     .join("another_table", "another_table.a == test_table.a");
     /// ```
-    pub fn join(self, target: &'a str, clause: &'a str) -> Self {
+    ///
+    /// ```
+    /// use lithium::Select;
+    /// let subquery = Select::from("test_table").as_subquery().with_alias("test");
+    /// let query = Select::from("foo_table").join(&subquery, "test.a == foo_table.a");
+    /// ```
+    pub fn join<T: AsStr<'a>>(self, target: T, clause: &'a str) -> Self {
         self.push_join(JoinType::Inner, target, clause)
     }
 
-    /// Appeds `LEFT JOIN` into query
-    pub fn left_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn left_join<T: AsStr<'a>>(self, target: T, clause: &'a str) -> Self {
         self.push_join(JoinType::Left, target, clause)
     }
 
-    /// Appends `RIGHT JOIN` into query
-    pub fn right_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn right_join<T: AsStr<'a>>(self, target: T, clause: &'a str) -> Self {
         self.push_join(JoinType::Right, target, clause)
     }
 
-    /// Appends `OUTER JOIN` into query
-    pub fn outer_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn outer_join<T: AsStr<'a>>(self, target: T, clause: &'a str) -> Self {
         self.push_join(JoinType::Outer, target, clause)
     }
 
-    /// Appends a `GROUP BY` clause
-    /// This method can receive `&str`  or `&[&str]`
+    /// Appends `GROUP BY` clause.
+    /// This method can receive either `&str` or `&[&str]`
+    ///
     /// # Example
     ///
     /// ```
     /// use lithium::Select;
     /// let query = Select::from("test_table").group_by("blah").group_by(&["foo", "bar"]);
     /// ```
-    pub fn group_by<T: Pusheable<&'a str>>(mut self, fields: T) -> Self {
+    pub fn group_by<T: Pusheable<'a>>(mut self, fields: T) -> Self {
         fields.push_to(&mut self.group_by);
         self
     }
 
-    /// Appends a `GROUP BY` clause
+    /// Appends `ORDER BY` clause.
+    ///
     /// # Example
     ///
     /// ```
-    /// use lithium::{Select, Ordering};
+    /// use lithium::Select;
+    /// use lithium::select::Ordering;
     /// let query = Select::from("test_table").order_by("foo", Ordering::Ascending);
     /// ```
     pub fn order_by(mut self, field: &'a str, ordering: Ordering) -> Self {
@@ -196,8 +215,10 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Appends a `WHERE` clause
+    /// Appends `WHERE` clause.
+    ///
     /// # Examples
+    ///
     /// Clauses are connected with `AND` by default.
     ///
     /// ```
@@ -218,39 +239,51 @@ impl<'a> Select<'a> {
         self
     }
 
+    /// Appends `HAVING` clause. Has the same API and usage as `where_cl`.
     pub fn having<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.having.push(clause.into_where_type());
         self
     }
 
+    /// Appends `LIMIT` clause.
     pub fn limit(mut self, value: &'a str) -> Self {
         self.limit = LimitType::Specified(value);
         self
     }
 
-    pub fn clear_limit(mut self) -> Self {
+    /// Removes `LIMIT` clause.
+    pub fn remove_limit(mut self) -> Self {
         self.limit = LimitType::Empty;
         self
     }
 
+    /// Appends `OFFSET` clause.
     pub fn offset(mut self, value: &'a str) -> Self {
         self.offset = OffsetType::Specified(value);
         self
     }
 
-    pub fn clear_offset(mut self) -> Self {
+    /// Removes `OFFSET` clause.
+    pub fn remove_offset(mut self) -> Self {
         self.offset = OffsetType::Empty;
         self
     }
 
-    pub fn clear_for(mut self) -> Self {
+    /// Appends `FOR` clause.
+    pub fn for_cl(mut self, for_cl: For<'a>) -> Self {
+        self.for_cl = ForType::Specified(for_cl);
+        self
+    }
+
+    /// Removes `FOR` clause.
+    pub fn remove_for(mut self) -> Self {
         self.for_cl = ForType::Empty;
         self
     }
 
-    pub fn for_cl(mut self, for_cl: For<'a>) -> Self {
-        self.for_cl = ForType::Specified(for_cl);
-        self
+    /// Returns an instance of `Subquery` with generated SQL inside.
+    pub fn as_subquery(self) -> Subquery<'a> {
+        Subquery::new(self.to_sql())
     }
 }
 
@@ -940,6 +973,37 @@ mod tests {
 
         assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn test_subquery() {
+        let subquery = Select::from("test_table").as_subquery().with_alias("blah");
+        let another = Select::from("test_table").fields(&subquery);
+        let test_sql_string = {
+            "SELECT (SELECT * FROM test_table) AS blah FROM test_table".to_string()
+        };
+        assert_eq!(another.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn test_join_on_subquery() {
+        let subquery = Select::from("foo_table").as_subquery().with_alias("bar");
+        let another = Select::from("bazz_table").join(&subquery, "bar.a == bazz_table.a");
+        let test_sql_string = {
+            "SELECT * FROM bazz_table INNER JOIN \
+            (SELECT * FROM foo_table) AS bar ON bar.a == bazz_table.a".to_string()
+        };
+        assert_eq!(another.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn test_select_from_subquery() {
+        let subquery = Select::from("foo_table").as_subquery().with_alias("bar");
+        let another = Select::from(&subquery);
+        let test_sql_string = {
+            "SELECT * FROM (SELECT * FROM foo_table) AS bar".to_string()
+        };
+        assert_eq!(another.to_sql(), test_sql_string);
     }
 
     #[bench]

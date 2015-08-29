@@ -37,8 +37,9 @@ pub enum Returning<'a> {
     Specified(Vec<&'a str>)
 }
 
+/// Represents `INSERT` query.
 #[derive(Clone, PartialEq, Eq)]
-struct Insert<'a> {
+pub struct Insert<'a> {
     table: &'a str,
     columns: Vec<&'a str>,
     values: Values<'a>,
@@ -55,12 +56,12 @@ impl<'a> Insert<'a> {
        }
     }
 
-    pub fn columns<T: Pusheable<&'a str>>(mut self, columns: T) -> Self {
+    pub fn columns<T: Pusheable<'a>>(mut self, columns: T) -> Self {
         columns.push_to(&mut self.columns);
         self
     }
 
-    pub fn values<T: Pusheable<&'a str>>(mut self, input_values: T) -> Self {
+    pub fn values<T: Pusheable<'a>>(mut self, input_values: T) -> Self {
         match self.values {
             Values::Default | Values::Select(_) => {
                 let mut values = vec![];
@@ -77,7 +78,7 @@ impl<'a> Insert<'a> {
         self
     }
 
-    pub fn clear_returning(mut self) -> Self {
+    pub fn remove_returning(mut self) -> Self {
         self.returning = Returning::Empty;
         self
     }
@@ -87,7 +88,7 @@ impl<'a> Insert<'a> {
         self
     }
 
-    pub fn returning<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
+    pub fn returning<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
         match self.returning {
             Returning::Empty | Returning::All => {
                 let mut fields = vec![];

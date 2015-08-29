@@ -22,6 +22,7 @@ pub enum WhereType<'a> {
 }
 
 
+/// Represents `WHERE` clause which is widely used in different queries.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Where<'a> {
     pub operator: Operator,
