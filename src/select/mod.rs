@@ -7,7 +7,7 @@ pub mod offset;
 pub mod for_cl;
 pub mod union;
 
-use common::{ToSQL, Pusheable};
+use common::{ToSQL, AsStr, Pusheable, Subquery};
 use where_cl::{WhereType, IntoWhereType};
 
 pub use self::select_type::SelectType;
@@ -34,11 +34,11 @@ pub struct Select<'a> {
 }
 
 impl<'a> Select<'a> {
-    pub fn from(from_table: &'a str) -> Self {
+    pub fn from<T: AsStr<'a>>(from_table: T) -> Self {
         Select {
             select: SelectType::All,
             distinct: DistinctType::Empty,
-            from: from_table,
+            from: from_table.as_str(),
             joins: vec![],
             group_by: vec![],
             order_by: vec![],
@@ -55,7 +55,7 @@ impl<'a> Select<'a> {
         self
     }
 
-    pub fn select<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
+    pub fn select<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
         match self.select {
             SelectType::All => {
                 let mut fields = vec![];
@@ -77,7 +77,7 @@ impl<'a> Select<'a> {
         self
     }
 
-    pub fn distinct_on<T: Pusheable<&'a str>>(mut self, input_fields: T) -> Self {
+    pub fn distinct_on<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
         match self.distinct {
             DistinctType::Empty | DistinctType::Simple => {
                 let mut fields = vec![];
@@ -89,32 +89,37 @@ impl<'a> Select<'a> {
         self
     }
 
-    pub fn push_join(mut self, join_type: JoinType, target: &'a str, clause: &'a str) -> Self {
+    pub fn push_join<T, C>(mut self, join_type: JoinType, target: T, clause: C) -> Self
+        where T: AsStr<'a>, C: AsStr<'a> {
         self.joins.push(Join {
             join_type: join_type,
-            target: target,
-            clause: clause
+            target: target.as_str(),
+            clause: clause.as_str(),
         });
         self
     }
 
-    pub fn join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn join<T, C>(self, target: T, clause: C) -> Self
+        where T: AsStr<'a>, C: AsStr<'a> {
         self.push_join(JoinType::Inner, target, clause)
     }
 
-    pub fn left_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn left_join<T, C>(self, target: T, clause: C) -> Self
+        where T: AsStr<'a>, C: AsStr<'a> {
         self.push_join(JoinType::Left, target, clause)
     }
 
-    pub fn right_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn right_join<T, C>(self, target: T, clause: C) -> Self
+        where T: AsStr<'a>, C: AsStr<'a> {
         self.push_join(JoinType::Right, target, clause)
     }
 
-    pub fn outer_join(self, target: &'a str, clause: &'a str) -> Self {
+    pub fn outer_join<T, C>(self, target: T, clause: C) -> Self
+        where T: AsStr<'a>, C: AsStr<'a> {
         self.push_join(JoinType::Outer, target, clause)
     }
 
-    pub fn group_by<T: Pusheable<&'a str>>(mut self, fields: T) -> Self {
+    pub fn group_by<T: Pusheable<'a>>(mut self, fields: T) -> Self {
         fields.push_to(&mut self.group_by);
         self
     }
@@ -165,6 +170,10 @@ impl<'a> Select<'a> {
     pub fn for_cl(mut self, for_cl: For<'a>) -> Self {
         self.for_cl = ForType::Specified(for_cl);
         self
+    }
+
+    pub fn as_subquery(self) -> Subquery<'a> {
+        Subquery::new(self.to_sql())
     }
 }
 
@@ -854,6 +863,37 @@ mod tests {
 
         assert!(query == built);
         assert_eq!(query.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn test_subquery() {
+        let subquery = Select::from("test_table").as_subquery().with_alias("blah");
+        let another = Select::from("test_table").select(&subquery);
+        let test_sql_string = {
+            "SELECT (SELECT * FROM test_table) AS blah FROM test_table".to_string()
+        };
+        assert_eq!(another.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn test_join_on_subquery() {
+        let subquery = Select::from("foo_table").as_subquery().with_alias("bar");
+        let another = Select::from("bazz_table").join(&subquery, "bar.a == bazz_table.a");
+        let test_sql_string = {
+            "SELECT * FROM bazz_table INNER JOIN \
+            (SELECT * FROM foo_table) AS bar ON bar.a == bazz_table.a".to_string()
+        };
+        assert_eq!(another.to_sql(), test_sql_string);
+    }
+
+    #[test]
+    fn test_select_from_subquery() {
+        let subquery = Select::from("foo_table").as_subquery().with_alias("bar");
+        let another = Select::from(&subquery);
+        let test_sql_string = {
+            "SELECT * FROM (SELECT * FROM foo_table) AS bar".to_string()
+        };
+        assert_eq!(another.to_sql(), test_sql_string);
     }
 
     #[bench]

@@ -1,4 +1,4 @@
-use common::{ToSQL, Pusheable};
+use common::{ToSQL, Pusheable, AsStr};
 use where_cl::{WhereType, IntoWhereType};
 
 // TODO: make it pretty
@@ -37,7 +37,7 @@ impl<'a> Update<'a> {
         }
     }
 
-    pub fn set<T: Pusheable<&'a str>>(mut self, expressions: T) -> Self {
+    pub fn set<T: Pusheable<'a>>(mut self, expressions: T) -> Self {
         expressions.push_to(&mut self.expressions);
         self
     }
@@ -47,8 +47,8 @@ impl<'a> Update<'a> {
         self
     }
 
-    pub fn from(mut self, table: &'a str) -> Self {
-        self.from = FromType::Specified(table);
+    pub fn from<T: AsStr<'a>>(mut self, table: T) -> Self {
+        self.from = FromType::Specified(table.as_str());
         self
     }
 
@@ -67,7 +67,7 @@ impl<'a> Update<'a> {
         self
     }
 
-    pub fn returning<T: Pusheable<&'a str>>(mut self, input_expressions: T) -> Self {
+    pub fn returning<T: Pusheable<'a>>(mut self, input_expressions: T) -> Self {
         match self.returning {
             Returning::Empty | Returning::All => {
                 let mut expressions = vec![];
@@ -129,6 +129,7 @@ mod tests {
     use super::{FromType, Returning, Update};
     use common::ToSQL;
     use where_cl::{Where, IntoWhereType};
+    use select::Select;
 
     #[test]
     fn smoke_test_builder() {
@@ -224,5 +225,15 @@ mod tests {
 
         assert!(update == built);
         assert_eq!(built.to_sql(), expected);
+    }
+
+    #[test]
+    fn test_from_subquery() {
+        let subquery = Select::from("blah_table").as_subquery().with_alias("alias");
+        let update = Update::new("test_table").set("foo = bar").from(&subquery);
+        let expected = {
+            "UPDATE test_table SET foo = bar FROM (SELECT * FROM blah_table) AS alias".to_string()
+        };
+        assert_eq!(update.to_sql(), expected);
     }
 }
