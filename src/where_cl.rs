@@ -1,3 +1,5 @@
+//! Keeps `WHERE` related stuff.
+
 use common::ToSQL;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -25,11 +27,13 @@ pub enum WhereType<'a> {
 /// Represents `WHERE` clause which is widely used in different queries.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Where<'a> {
+    /// Operator which will be used to join clauses
     pub operator: Operator,
     pub clauses: Vec<WhereType<'a>>,
 }
 
 impl<'a> Where<'a> {
+    /// Method to start with.
     pub fn new(operator: Operator) -> Self {
         Where {
             operator: operator,
@@ -37,14 +41,17 @@ impl<'a> Where<'a> {
         }
     }
     
+    /// Just an alias for `new` with pre-defined `AND` operator.
     pub fn with_and() -> Self {
         Self::new(Operator::And)
     }
 
+    /// Just an alias for `new` with pre-defined `OR` operator.
     pub fn with_or() -> Self {
         Self::new(Operator::Or)
     }
 
+    /// Specifies clause. Can receive either `&str` or `Where`.
     pub fn clause<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.clauses.push(clause.into_where_type());
         self

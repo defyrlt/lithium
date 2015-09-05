@@ -1,3 +1,5 @@
+//! Keeps `SELECT` related stuff.
+
 pub mod select_type;
 pub mod distinct;
 pub mod join;

@@ -1,3 +1,5 @@
+//! Keeps stuff (mostly traits) that is used (or is going to be) across different queries.
+
 pub trait ToSQL {
     fn to_sql(&self) -> String;
 }
@@ -60,11 +62,13 @@ pusheable_impls! {
 
 /// Struct that is used to keep result from `to_sql` of some query.
 /// If you use `with_alias` - keep in mind that it's changing content of
-/// `query` in **irreversible** way. We do this because we need `&str` to have a nice
-/// way of using subqueries and avoid forcing users to use `String`, where they don't
+/// `query` in **irreversible** way.  
+/// We do this because we need `&str` to have a nice
+/// way of using subqueries and avoid forcing users to use `String` when they don't
 /// really need to.
 #[derive(Clone)]
 pub struct Subquery<'a> {
+    /// Keeps generated SQL
     pub query: String,
     alias: Option<&'a str> // FIXME: do we need this?
 }
@@ -77,6 +81,7 @@ impl<'a> Subquery<'a> {
         }
     }
 
+    /// Appends `AS {alias}` to the `query` field
     pub fn with_alias(mut self, alias: &'a str) -> Self {
         self.alias = Some(alias);
         self.query.push_str(&format!(" AS {}", alias));
