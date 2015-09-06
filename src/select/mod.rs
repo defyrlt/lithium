@@ -21,37 +21,19 @@ pub use self::offset::OffsetType;
 pub use self::for_cl::{For, ForType};
 
 /// Represents `SELECT` query.
-///
-/// # Examples
-/// Simple "select all":
-///
-/// ```
-/// use lithium::{ToSQL, Select};
-/// let query = Select::from("test_table");
-/// assert_eq!(query.to_sql(), "SELECT * FROM test_table");
-/// ```
-///
-/// Selecting some fields:
-///
-/// ```
-/// use lithium::{ToSQL, Select};
-/// // you can pass &str or &[&str] into `fields` method
-/// let query = Select::from("test_table").fields("foo").fields(&["bar", "bazz"]);
-/// assert_eq!(query.to_sql(), "SELECT foo, bar, bazz FROM test_table");
-/// ```
 #[derive(Clone, PartialEq, Eq)]
 pub struct Select<'a> {
-    pub select_type: SelectType<'a>,
-    pub distinct: DistinctType<'a>,
-    pub from: &'a str,
-    pub joins: Vec<Join<'a>>,
-    pub group_by: Vec<&'a str>,
-    pub order_by: Vec<OrderBy<'a>>,
-    pub where_cl: Vec<WhereType<'a>>,
-    pub having: Vec<WhereType<'a>>,
-    pub limit: LimitType<'a>,
-    pub offset: OffsetType<'a>,
-    pub for_cl: ForType<'a>
+    select_type: SelectType<'a>,
+    distinct: DistinctType<'a>,
+    from: &'a str,
+    joins: Vec<Join<'a>>,
+    group_by: Vec<&'a str>,
+    order_by: Vec<OrderBy<'a>>,
+    where_cl: Vec<WhereType<'a>>,
+    having: Vec<WhereType<'a>>,
+    limit: LimitType<'a>,
+    offset: OffsetType<'a>,
+    for_cl: ForType<'a>
 }
 
 impl<'a> Select<'a> {
@@ -60,16 +42,19 @@ impl<'a> Select<'a> {
     /// # Examples
     ///
     /// ```
-    /// use lithium::Select;
+    /// use lithium::{ToSQL, Select};
     /// let query = Select::from("test_table");
+    /// assert_eq!(query.to_sql(), "SELECT * FROM test_table");
     /// ```
     ///
-    /// You could pass a subquery into `from`
+    /// You could pass a subquery
     ///
     /// ```
-    /// use lithium::Select;
+    /// use lithium::{ToSQL, Select};
     /// let subquery = Select::from("foo_table").as_subquery().with_alias("foo");
     /// let query = Select::from(&subquery);
+    /// let expected = "SELECT * FROM (SELECT * FROM foo_table) AS foo".to_string();
+    /// assert_eq!(query.to_sql(), expected);
     /// ```
     pub fn from<T: AsStr<'a>>(from_table: T) -> Self {
         Select {
@@ -87,7 +72,7 @@ impl<'a> Select<'a> {
         }
     }
 
-    /// Will result in `SELECT * ...` (which is a default behaviour).
+    /// Specifies `SELECT` clause. Will result in `SELECT * ...` (which is a default behaviour).
     pub fn select_all(mut self) -> Self {
         self.select_type = SelectType::All;
         self
@@ -99,8 +84,10 @@ impl<'a> Select<'a> {
     /// # Example
     ///
     /// ```
-    /// use lithium::Select;
+    /// use lithium::{ToSQL, Select};
     /// let query = Select::from("test_table").fields("blah").fields(&["foo", "bar"]);
+    /// let expected = "SELECT blah, foo, bar FROM test_table".to_string();
+    /// assert_eq!(query.to_sql(), expected);
     /// ```
     pub fn fields<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
         match self.select_type {
@@ -114,13 +101,7 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Removes `DISTINCT` clause from query.
-    pub fn remove_distinct(mut self) -> Self {
-        self.distinct = DistinctType::Empty;
-        self
-    }
-
-    /// Will result in `SELECT DISTINCT ...`
+    /// Specifies `DISTINCT` clause. Will result in `SELECT DISTINCT ...`
     pub fn distinct(mut self) -> Self {
         self.distinct = DistinctType::Simple;
         self
@@ -131,8 +112,10 @@ impl<'a> Select<'a> {
     /// # Example
     ///
     /// ```
-    /// use lithium::Select;
+    /// use lithium::{ToSQL, Select};
     /// let query = Select::from("test_table").distinct_on("blah").distinct_on(&["foo", "bar"]);
+    /// let expected = "SELECT DISTINCT ON (blah, foo, bar) * FROM test_table".to_string();
+    /// assert_eq!(query.to_sql(), expected);
     /// ```
     pub fn distinct_on<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
         match self.distinct {
@@ -146,6 +129,12 @@ impl<'a> Select<'a> {
         self
     }
 
+    /// Removes `DISTINCT` clause.
+    pub fn remove_distinct(mut self) -> Self {
+        self.distinct = DistinctType::Empty;
+        self
+    }
+
     fn push_join<T: AsStr<'a>>(mut self, join_type: JoinType, target: T, clause: &'a str) -> Self {
         self.joins.push(Join {
             join_type: join_type,
@@ -155,20 +144,24 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Appends `INNER JOIN` into query. Could receive a subquery as `target`.
+    /// Specifies `INNER JOIN`. Could receive a subquery as `target`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use lithium::Select;
+    /// use lithium::{ToSQL, Select};
     /// let query = Select::from("test_table")
     ///     .join("another_table", "another_table.a == test_table.a");
+    /// let expected = "SELECT * FROM test_table INNER JOIN another_table ON another_table.a == test_table.a".to_string();
+    /// assert_eq!(query.to_sql(), expected);
     /// ```
     ///
     /// ```
-    /// use lithium::Select;
+    /// use lithium::{ToSQL, Select};
     /// let subquery = Select::from("test_table").as_subquery().with_alias("test");
     /// let query = Select::from("foo_table").join(&subquery, "test.a == foo_table.a");
+    /// let expected = "SELECT * FROM foo_table INNER JOIN (SELECT * FROM test_table) AS test ON test.a == foo_table.a".to_string();
+    /// assert_eq!(query.to_sql(), expected);
     /// ```
     pub fn join<T: AsStr<'a>>(self, target: T, clause: &'a str) -> Self {
         self.push_join(JoinType::Inner, target, clause)
@@ -186,28 +179,31 @@ impl<'a> Select<'a> {
         self.push_join(JoinType::Outer, target, clause)
     }
 
-    /// Appends `GROUP BY` clause.
+    /// Specifies `GROUP BY` clause.
     /// This method can receive either `&str` or `&[&str]`
     ///
     /// # Example
     ///
     /// ```
-    /// use lithium::Select;
+    /// use lithium::{ToSQL, Select};
     /// let query = Select::from("test_table").group_by("blah").group_by(&["foo", "bar"]);
+    /// let expected = "SELECT * FROM test_table GROUP BY blah, foo, bar".to_string();
+    /// assert_eq!(query.to_sql(), expected);
     /// ```
     pub fn group_by<T: Pusheable<'a>>(mut self, fields: T) -> Self {
         fields.push_to(&mut self.group_by);
         self
     }
 
-    /// Appends `ORDER BY` clause.
+    /// Specifies `ORDER BY` clause.
     ///
     /// # Example
     ///
     /// ```
-    /// use lithium::Select;
+    /// use lithium::{ToSQL, Select};
     /// use lithium::select::Ordering;
     /// let query = Select::from("test_table").order_by("foo", Ordering::Ascending);
+    /// assert_eq!(query.to_sql(), "SELECT * FROM test_table ORDER BY foo ASC".to_string());
     /// ```
     pub fn order_by(mut self, field: &'a str, ordering: Ordering) -> Self {
         self.order_by.push(OrderBy {
@@ -217,7 +213,7 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Appends `WHERE` clause.
+    /// Specifies `WHERE` clause.
     ///
     /// # Examples
     ///
@@ -232,22 +228,24 @@ impl<'a> Select<'a> {
     /// That's how you can use `OR`:
     ///
     /// ```
-    /// use lithium::{Select, Where};
+    /// use lithium::{ToSQL, Select, Where};
     /// let query = Select::from("test_table")
     ///     .where_cl(Where::with_or().clause("foo == bar").clause("bar == bazz"));
+    /// let expected = "SELECT * FROM test_table WHERE (foo == bar OR bar == bazz)".to_string();
+    /// assert_eq!(query.to_sql(), expected);
     /// ```
     pub fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.where_cl.push(clause.into_where_type());
         self
     }
 
-    /// Appends `HAVING` clause. Has the same API and usage as `where_cl`.
+    /// Specifies `HAVING` clause. Has the same API and usage as `where_cl`.
     pub fn having<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.having.push(clause.into_where_type());
         self
     }
 
-    /// Appends `LIMIT` clause.
+    /// Specifies `LIMIT` clause.
     pub fn limit(mut self, value: &'a str) -> Self {
         self.limit = LimitType::Specified(value);
         self
@@ -259,7 +257,7 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Appends `OFFSET` clause.
+    /// Specifies `OFFSET` clause.
     pub fn offset(mut self, value: &'a str) -> Self {
         self.offset = OffsetType::Specified(value);
         self
@@ -271,7 +269,17 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// Appends `FOR` clause.
+    /// Specifies `FOR` clause.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::{ToSQL, Select};
+    /// use lithium::select::For;
+    /// let query = Select::from("test_table").for_cl(For::update().nowait());
+    /// let expected = "SELECT * FROM test_table FOR UPDATE NOWAIT".to_string();
+    /// assert_eq!(query.to_sql(), expected);
+    /// ```
     pub fn for_cl(mut self, for_cl: For<'a>) -> Self {
         self.for_cl = ForType::Specified(for_cl);
         self

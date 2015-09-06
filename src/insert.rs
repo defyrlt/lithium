@@ -81,7 +81,7 @@ impl<'a> Insert<'a> {
         self
     }
 
-    /// Specifies `INSERT` values. Sorry for acceping `Vec` here - we're going to find a better way
+    /// Specifies `INSERT` values. Sorry for receiving `Vec` here - we're going to find a better way
     /// for this.
     ///
     /// # Examples
