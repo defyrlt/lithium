@@ -4,7 +4,7 @@ pub trait ToSQL {
     fn to_sql(&self) -> String;
 }
 
-/// Is used to build up methods that can receive either `&str` or `&Subquery`
+/// Is used to build up methods which can receive either `&str` or `&Subquery`
 /// in a convenient way. You can find examples in some of `Select`'s methods.
 pub trait AsStr<'a> {
     fn as_str(&self) -> &'a str;
@@ -22,7 +22,7 @@ impl<'a> AsStr<'a> for &'a Subquery<'a> {
     }
 }
 
-/// Is used to build up methods that can receive either `&str` or `&[&str; N]`
+/// Is used to build up methods which can receive either `&str` or `&[&str; N]`
 /// in a convenient way. You can find examples in some of `Select`'s methods.
 pub trait Pusheable<'a> {
     fn push_to(&self, destination: &mut Vec<&'a str>);

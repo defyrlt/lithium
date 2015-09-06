@@ -43,14 +43,16 @@ impl<'a> Select<'a> {
     ///
     /// ```
     /// use lithium::{ToSQL, Select};
+    ///
     /// let query = Select::from("test_table");
     /// assert_eq!(query.to_sql(), "SELECT * FROM test_table");
     /// ```
     ///
-    /// You could pass a subquery
+    /// You can pass a subquery
     ///
     /// ```
     /// use lithium::{ToSQL, Select};
+    ///
     /// let subquery = Select::from("foo_table").as_subquery().with_alias("foo");
     /// let query = Select::from(&subquery);
     /// let expected = "SELECT * FROM (SELECT * FROM foo_table) AS foo".to_string();
@@ -78,25 +80,26 @@ impl<'a> Select<'a> {
         self
     }
 
-    /// This method is used to specify desired `SELECT` fields.
+    /// This method is used to specify desired `SELECT` columns.
     /// It can receive either `&str` or `&[&str]`
     ///
     /// # Example
     ///
     /// ```
     /// use lithium::{ToSQL, Select};
-    /// let query = Select::from("test_table").fields("blah").fields(&["foo", "bar"]);
+    ///
+    /// let query = Select::from("test_table").columns("blah").columns(&["foo", "bar"]);
     /// let expected = "SELECT blah, foo, bar FROM test_table".to_string();
     /// assert_eq!(query.to_sql(), expected);
     /// ```
-    pub fn fields<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
+    pub fn columns<T: Pusheable<'a>>(mut self, input_columns: T) -> Self {
         match self.select_type {
             SelectType::All => {
-                let mut fields = vec![];
-                input_fields.push_to(&mut fields);
-                self.select_type = SelectType::Specific(fields);
+                let mut columns = vec![];
+                input_columns.push_to(&mut columns);
+                self.select_type = SelectType::Specific(columns);
             },
-            SelectType::Specific(ref mut fields) => input_fields.push_to(fields)
+            SelectType::Specific(ref mut columns) => input_columns.push_to(columns)
         }
         self
     }
@@ -113,18 +116,19 @@ impl<'a> Select<'a> {
     ///
     /// ```
     /// use lithium::{ToSQL, Select};
+    ///
     /// let query = Select::from("test_table").distinct_on("blah").distinct_on(&["foo", "bar"]);
     /// let expected = "SELECT DISTINCT ON (blah, foo, bar) * FROM test_table".to_string();
     /// assert_eq!(query.to_sql(), expected);
     /// ```
-    pub fn distinct_on<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
+    pub fn distinct_on<T: Pusheable<'a>>(mut self, input_columns: T) -> Self {
         match self.distinct {
             DistinctType::Empty | DistinctType::Simple => {
-                let mut fields = vec![];
-                input_fields.push_to(&mut fields);
-                self.distinct = DistinctType::Extended(fields);
+                let mut columns = vec![];
+                input_columns.push_to(&mut columns);
+                self.distinct = DistinctType::Extended(columns);
             },
-            DistinctType::Extended(ref mut fields) => input_fields.push_to(fields)
+            DistinctType::Extended(ref mut columns) => input_columns.push_to(columns)
         }
         self
     }
@@ -150,6 +154,7 @@ impl<'a> Select<'a> {
     ///
     /// ```
     /// use lithium::{ToSQL, Select};
+    ///
     /// let query = Select::from("test_table")
     ///     .join("another_table", "another_table.a == test_table.a");
     /// let expected = "SELECT * FROM test_table INNER JOIN another_table ON another_table.a == test_table.a".to_string();
@@ -186,12 +191,13 @@ impl<'a> Select<'a> {
     ///
     /// ```
     /// use lithium::{ToSQL, Select};
+    ///
     /// let query = Select::from("test_table").group_by("blah").group_by(&["foo", "bar"]);
     /// let expected = "SELECT * FROM test_table GROUP BY blah, foo, bar".to_string();
     /// assert_eq!(query.to_sql(), expected);
     /// ```
-    pub fn group_by<T: Pusheable<'a>>(mut self, fields: T) -> Self {
-        fields.push_to(&mut self.group_by);
+    pub fn group_by<T: Pusheable<'a>>(mut self, columns: T) -> Self {
+        columns.push_to(&mut self.group_by);
         self
     }
 
@@ -202,6 +208,7 @@ impl<'a> Select<'a> {
     /// ```
     /// use lithium::{ToSQL, Select};
     /// use lithium::select::Ordering;
+    ///
     /// let query = Select::from("test_table").order_by("foo", Ordering::Ascending);
     /// assert_eq!(query.to_sql(), "SELECT * FROM test_table ORDER BY foo ASC".to_string());
     /// ```
@@ -221,7 +228,8 @@ impl<'a> Select<'a> {
     ///
     /// ```
     /// use lithium::{Select, ToSQL};
-    /// let query = Select::from("test_table").where_cl("foo == bar").where_cl("bar == bazz");
+    ///
+    /// let query = Select::from("test_table").filter("foo == bar").filter("bar == bazz");
     /// assert_eq!(query.to_sql(), "SELECT * FROM test_table WHERE foo == bar AND bar == bazz".to_owned());
     /// ```
     ///
@@ -229,17 +237,18 @@ impl<'a> Select<'a> {
     ///
     /// ```
     /// use lithium::{ToSQL, Select, Where};
+    ///
     /// let query = Select::from("test_table")
-    ///     .where_cl(Where::with_or().clause("foo == bar").clause("bar == bazz"));
+    ///     .filter(Where::with_or().expr("foo == bar").expr("bar == bazz"));
     /// let expected = "SELECT * FROM test_table WHERE (foo == bar OR bar == bazz)".to_string();
     /// assert_eq!(query.to_sql(), expected);
     /// ```
-    pub fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
+    pub fn filter<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.where_cl.push(clause.into_where_type());
         self
     }
 
-    /// Specifies `HAVING` clause. Has the same API and usage as `where_cl`.
+    /// Specifies `HAVING` clause. Has the same API and usage as `filter`.
     pub fn having<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
         self.having.push(clause.into_where_type());
         self
@@ -276,11 +285,12 @@ impl<'a> Select<'a> {
     /// ```
     /// use lithium::{ToSQL, Select};
     /// use lithium::select::For;
-    /// let query = Select::from("test_table").for_cl(For::update().nowait());
+    ///
+    /// let query = Select::from("test_table").for_(For::update().nowait());
     /// let expected = "SELECT * FROM test_table FOR UPDATE NOWAIT".to_string();
     /// assert_eq!(query.to_sql(), expected);
     /// ```
-    pub fn for_cl(mut self, for_cl: For<'a>) -> Self {
+    pub fn for_(mut self, for_cl: For<'a>) -> Self {
         self.for_cl = ForType::Specified(for_cl);
         self
     }
@@ -462,7 +472,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::from("test_table").fields("foo").fields("bar");
+        let built = Select::from("test_table").columns("foo").columns("bar");
 
         assert!(query == built);
         assert_eq!(query.to_sql(), "SELECT foo, bar FROM test_table".to_string());
@@ -691,7 +701,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::from("test_table").where_cl("foo == bar");
+        let built = Select::from("test_table").filter("foo == bar");
 
         let test_sql_string = {
             "SELECT * \
@@ -719,7 +729,7 @@ mod tests {
             for_cl: ForType::Empty
         };
 
-        let built = Select::from("test_table").where_cl("foo == bar").where_cl("lala == blah");
+        let built = Select::from("test_table").filter("foo == bar").filter("lala == blah");
 
         let test_sql_string = {
             "SELECT * \
@@ -863,7 +873,7 @@ mod tests {
             for_cl: ForType::Specified(for_foo)
         };
 
-        let built = Select::from("test_table").for_cl(For::update());
+        let built = Select::from("test_table").for_(For::update());
 
         let test_sql_string = {
             "SELECT * \
@@ -897,7 +907,7 @@ mod tests {
             for_cl: ForType::Specified(for_foo)
         };
 
-        let built = Select::from("test_table").for_cl(For::update().table("foo").table("bar"));
+        let built = Select::from("test_table").for_(For::update().table("foo").table("bar"));
 
         let test_sql_string = {
             "SELECT * \
@@ -954,18 +964,18 @@ mod tests {
         };
 
         let built = Select::from("test_table")
-            .fields(&["foo", "bar"])
+            .columns(&["foo", "bar"])
             .distinct_on(&["fizz", "bazz"])
             .join("bar_table", "1 == 1")
             .left_join("bazz_table", "2 == 2")
             .group_by(&["foo", "bar"])
-            .where_cl("foo == bar").where_cl("lala == blah")
+            .filter("foo == bar").filter("lala == blah")
             .having("foo == bar").having("lala == blah")
             .order_by("bar", Ordering::Descending)
             .order_by("foo", Ordering::Ascending)
             .limit("10")
             .offset("5")
-            .for_cl(For::update().table(&["foo", "bar"]).nowait());
+            .for_(For::update().table(&["foo", "bar"]).nowait());
 
         let test_sql_string = {
             "SELECT DISTINCT ON (fizz, bazz) foo, bar \
@@ -988,7 +998,7 @@ mod tests {
     #[test]
     fn test_subquery() {
         let subquery = Select::from("test_table").as_subquery().with_alias("blah");
-        let another = Select::from("test_table").fields(&subquery);
+        let another = Select::from("test_table").columns(&subquery);
         let test_sql_string = {
             "SELECT (SELECT * FROM test_table) AS blah FROM test_table".to_string()
         };
@@ -1018,7 +1028,7 @@ mod tests {
 
     #[bench]
     fn bench_query_with_extended_where(b: &mut Bencher) {
-        let where_cl = Where::with_and().clause("foo == bar").clause("lala == blah");
+        let where_cl = Where::with_and().expr("foo == bar").expr("lala == blah");
 
         let order_by_bar_desc = OrderBy {
             ordering: Ordering::Descending,
@@ -1104,18 +1114,18 @@ mod tests {
     fn bench_builder(b: &mut Bencher) {
         b.iter(|| {
             let _ = Select::from("test_table")
-                .fields(&["foo", "bar"])
+                .columns(&["foo", "bar"])
                 .distinct_on(&["fizz", "bazz"])
                 .join("bar_table", "1 == 1")
                 .left_join("bazz_table", "2 == 2")
                 .group_by(&["foo", "bar"])
-                .where_cl("foo == bar").where_cl("lala == blah")
+                .filter("foo == bar").filter("lala == blah")
                 .having("foo == bar").having("lala == blah")
                 .order_by("bar", Ordering::Descending)
                 .order_by("foo", Ordering::Ascending)
                 .limit("10")
                 .offset("5")
-                .for_cl(For::update().table(&["foo", "bar"]).nowait());
+                .for_(For::update().table(&["foo", "bar"]).nowait());
         });
     }
 }

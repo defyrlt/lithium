@@ -69,7 +69,7 @@ impl<'a> Update<'a> {
     ///
     /// ```
     /// use lithium::{Select, Update};
-    /// let subquery = Select::from("foo").fields(&["a", "b"]).as_subquery().with_alias("foo");
+    /// let subquery = Select::from("foo").columns(&["a", "b"]).as_subquery().with_alias("foo");
     /// let update = Update::new("bar").set(&["a = foo.a", "b = foo.b"]).from(&subquery);
     /// let expected = "UPDATE bar SET a = foo.a, b = foo.b FROM (SELECT a, b FROM foo) AS foo".to_string();
     /// assert_eq!(update.to_sql(), expected);
@@ -91,13 +91,13 @@ impl<'a> Update<'a> {
     ///
     /// ```
     /// use lithium::{Update, Where};
-    /// let where_cl = Where::with_or().clause("a > 2").clause("b < 3");
-    /// let update = Update::new("foo").set("a = 2").where_cl(where_cl).where_cl("c > 4");
+    /// let where_cl = Where::with_or().expr("a > 2").expr("b < 3");
+    /// let update = Update::new("foo").set("a = 2").filter(where_cl).filter("c > 4");
     /// let expected = "UPDATE foo SET a = 2 WHERE (a > 2 OR b < 3) AND c > 4".to_string();
     /// assert_eq!(update.to_sql(), expected);
     /// ```
-    pub fn where_cl<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
-        self.where_cl.push(clause.into_where_type());
+    pub fn filter<T: IntoWhereType<'a>>(mut self, expr: T) -> Self {
+        self.where_cl.push(expr.into_where_type());
         self
     }
 
@@ -191,7 +191,7 @@ mod tests {
         let _upd = Update::new("test_table")
             .set("a = 2")
             .set(&["b = 3", "c = 5"])
-            .where_cl("a == 10")
+            .filter("a == 10")
             .from("yo")
             .remove_from()
             .empty_returning()
@@ -234,7 +234,7 @@ mod tests {
         let built = Update::new("test_table")
             .set(&["a = 2", "b = 3"])
             .from("other_test_table")
-            .where_cl("d == 3")
+            .filter("d == 3")
             .returning_all();
 
         let expected = {
@@ -251,9 +251,9 @@ mod tests {
 
     #[test]
     fn test_returning_some() {
-        let foo = Where::with_and().clause("foo == bar").clause("fizz == bazz");
-        let bar = Where::with_and().clause("a == b").clause("c == d");
-        let where_cl = Where::with_or().clause(foo).clause(bar);
+        let foo = Where::with_and().expr("foo == bar").expr("fizz == bazz");
+        let bar = Where::with_and().expr("a == b").expr("c == d");
+        let where_cl = Where::with_or().expr(foo).expr(bar);
 
         let update = Update {
             table: "test_table",
@@ -265,7 +265,7 @@ mod tests {
 
         let built = Update::new("test_table")
             .set(&["a = 2", "b = 3"])
-            .where_cl(where_cl)
+            .filter(where_cl)
             .returning("a")
             .returning(&["b"]);
 

@@ -2,6 +2,8 @@
 #![allow(dead_code)]
 #![feature(test)]
 
+#![doc(html_logo_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Electron_shell_003_Lithium_-_no_label.svg/2000px-Electron_shell_003_Lithium_-_no_label.svg.png")]
+
 //! # lithium
 //!
 //! lithium is (probably) fast and (hopefully) ergonomic SQL builder.  
@@ -9,7 +11,8 @@
 //! built on nightly and wasn't checked on stable/beta.
 //!
 //! As for now, lithium provides interface to create a SQL, but it's not responsible
-//! for executing it.
+//! for executing it.  
+//! lithium does **not** handle security in any way, it's on your DB driver!
 //!
 //! You can find examples in documentation for every struct.
 

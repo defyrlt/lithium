@@ -125,7 +125,7 @@ impl<'a> Insert<'a> {
     ///
     /// ```
     /// use lithium::{Select, Insert};
-    /// let select = Select::from("foo").fields(&["a", "b"]);
+    /// let select = Select::from("foo").columns(&["a", "b"]);
     /// let insert = Insert::into("bar").columns(&["a", "b"]).query(select);
     /// let expected = "INSERT INTO bar (a, b) SELECT a, b FROM foo".to_string();
     /// assert_eq!(insert.to_sql(), expected);
@@ -150,7 +150,7 @@ impl<'a> Insert<'a> {
         self
     }
 
-    /// Specifies fields for `RETURNING` clause.
+    /// Specifies columns for `RETURNING` clause.
     ///
     /// # Example
     ///
@@ -160,14 +160,14 @@ impl<'a> Insert<'a> {
     /// let expected = "INSERT INTO foo VALUES (bar, bazz) RETURNING a, b".to_string();
     /// assert_eq!(query.to_sql(), expected);
     /// ```
-    pub fn returning<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
+    pub fn returning<T: Pusheable<'a>>(mut self, input_columns: T) -> Self {
         match self.returning {
             Returning::Empty | Returning::All => {
-                let mut fields = vec![];
-                input_fields.push_to(&mut fields);
-                self.returning = Returning::Specified(fields);
+                let mut columns = vec![];
+                input_columns.push_to(&mut columns);
+                self.returning = Returning::Specified(columns);
             },
-            Returning::Specified(ref mut fields) => input_fields.push_to(fields)
+            Returning::Specified(ref mut columns) => input_columns.push_to(columns)
         };
         self
     }
