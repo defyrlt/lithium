@@ -1,3 +1,5 @@
+//! Keeps `INSERT` related stuff.
+
 use select::Select;
 use common::{ToSQL, Pusheable};
 
@@ -5,9 +7,9 @@ use common::{ToSQL, Pusheable};
 const RETURNING: &'static str = " RETURNING ";
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum Values<'a> {
+enum Values<'a> {
     Default,
-    Specified(Vec<&'a str>),
+    Specified(Vec<Vec<&'a str>>),
     Select(Select<'a>)
 }
 
@@ -20,7 +22,7 @@ impl<'a> Values<'a> {
                 rv.push_str("VALUES");
                 rv.push(' ');
                 rv.push_str(&values.iter()
-                            .map(|x| format!("({})", x))
+                            .map(|x| format!("({})", x.join(", ")))
                             .collect::<Vec<_>>()
                             .join(", "));
                 rv
@@ -31,14 +33,15 @@ impl<'a> Values<'a> {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum Returning<'a> {
+enum Returning<'a> {
     Empty,
     All,
     Specified(Vec<&'a str>)
 }
 
+/// Represents `INSERT` query.
 #[derive(Clone, PartialEq, Eq)]
-struct Insert<'a> {
+pub struct Insert<'a> {
     table: &'a str,
     columns: Vec<&'a str>,
     values: Values<'a>,
@@ -46,6 +49,16 @@ struct Insert<'a> {
 }
 
 impl<'a> Insert<'a> {
+    /// Method to start with. 
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::Insert;
+    /// let query = Insert::into("test_table");
+    /// let expected = "INSERT INTO test_table DEFAULT VALUES".to_string();
+    /// assert_eq!(query.to_sql(), expected);
+    /// ```
     pub fn into(table: &'a str) -> Self {
        Insert {
            table: table,
@@ -55,53 +68,118 @@ impl<'a> Insert<'a> {
        }
     }
 
+    /// Specifies columns for `INSERT`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::Insert;
+    /// let query = Insert::into("test_table").columns(&["foo", "bar"]).columns("bazz");
+    /// ```
     pub fn columns<T: Pusheable<'a>>(mut self, columns: T) -> Self {
         columns.push_to(&mut self.columns);
         self
     }
 
-    pub fn values<T: Pusheable<'a>>(mut self, input_values: T) -> Self {
+    /// Specifies `INSERT` values. Sorry for receiving `Vec` here - we're going to find a better way
+    /// for this.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lithium::Insert;
+    /// let query = Insert::into("foo").columns("bar").values(vec!["bazz"]);
+    /// ```
+    ///
+    /// ```
+    /// use lithium::Insert;
+    /// let query = Insert::into("foo").columns(&["bar", "bazz"])
+    ///     .values(vec!["123", "123"]).values(vec!["345", "678"]); 
+    /// let expected = "INSERT INTO foo (bar, bazz) VALUES (123, 123), (345, 678)".to_string();
+    /// assert_eq!(query.to_sql(), expected);
+    /// ```
+    // pub fn values<T: Pusheable<'a>>(mut self, input_values: T) -> Self {
+    //     match self.values {
+    //         Values::Default | Values::Select(_) => {
+    //             let mut values = vec![];
+    //             input_values.push_to(&mut values);
+    //             self.values = Values::Specified(values);
+    //         },
+    //         Values::Specified(ref mut values) => input_values.push_to(values)
+    //     }
+    //     self
+    // }
+    pub fn values(mut self, input_values: Vec<&'a str>) -> Self {
         match self.values {
             Values::Default | Values::Select(_) => {
-                let mut values = vec![];
-                input_values.push_to(&mut values);
-                self.values = Values::Specified(values);
+                self.values = Values::Specified(vec![input_values]);
             },
-            Values::Specified(ref mut values) => input_values.push_to(values)
+            Values::Specified(ref mut values) => values.push(input_values)
         }
         self
     }
 
+    /// Specifies `SELECT` as `INSERT` value. Results in `INSERT INTO ... SELECT`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::{Select, Insert};
+    /// let select = Select::from("foo").columns(&["a", "b"]);
+    /// let insert = Insert::into("bar").columns(&["a", "b"]).query(select);
+    /// let expected = "INSERT INTO bar (a, b) SELECT a, b FROM foo".to_string();
+    /// assert_eq!(insert.to_sql(), expected);
+    /// ```
     pub fn query(mut self, query: Select<'a>) -> Self {
         self.values = Values::Select(query);
         self
     }
 
-    pub fn clear_returning(mut self) -> Self {
-        self.returning = Returning::Empty;
-        self
-    }
-
+    /// Specifies `RETURNING` clause. WIll result in `RETURNING *`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::Insert;
+    /// let query = Insert::into("foo").values(vec!["bar"]).returning_all();
+    /// let expected = "INSERT INTO foo VALUES (bar) RETURNING *".to_string();
+    /// assert_eq!(query.to_sql(), expected);
+    /// ```
     pub fn returning_all(mut self) -> Self {
         self.returning = Returning::All;
         self
     }
 
-    pub fn returning<T: Pusheable<'a>>(mut self, input_fields: T) -> Self {
+    /// Specifies columns for `RETURNING` clause.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lithium::Insert;
+    /// let query = Insert::into("foo").values(vec!["bar", "bazz"]).returning(&["a", "b"]);
+    /// let expected = "INSERT INTO foo VALUES (bar, bazz) RETURNING a, b".to_string();
+    /// assert_eq!(query.to_sql(), expected);
+    /// ```
+    pub fn returning<T: Pusheable<'a>>(mut self, input_columns: T) -> Self {
         match self.returning {
             Returning::Empty | Returning::All => {
-                let mut fields = vec![];
-                input_fields.push_to(&mut fields);
-                self.returning = Returning::Specified(fields);
+                let mut columns = vec![];
+                input_columns.push_to(&mut columns);
+                self.returning = Returning::Specified(columns);
             },
-            Returning::Specified(ref mut fields) => input_fields.push_to(fields)
+            Returning::Specified(ref mut columns) => input_columns.push_to(columns)
         };
         self
     }
-}
 
-impl<'a> Insert<'a> {
-    fn to_sql(&self) -> String {
+    /// Removes `RETURNING` clause.
+    pub fn remove_returning(mut self) -> Self {
+        self.returning = Returning::Empty;
+        self
+    }
+
+    /// Generates SQL.
+    pub fn to_sql(&self) -> String {
         let mut rv = String::new();
         rv.push_str("INSERT INTO");
         rv.push(' ');
@@ -184,15 +262,15 @@ mod tests {
         let insert = Insert {
             table: "test_table",
             columns: vec!["foo", "bar"],
-            values: Values::Specified(vec!["DEFAULT, fizz", "foo, bar"]),
+            values: Values::Specified(vec![vec!["DEFAULT, fizz"], vec!["foo", "bar"]]),
             returning: Returning::All
         };
 
         let built = Insert::into("test_table")
             .columns("foo")
             .columns(&["bar"])
-            .values("DEFAULT, fizz")
-            .values(&["foo, bar"])
+            .values(vec!["DEFAULT, fizz"])
+            .values(vec!["foo", "bar"])
             .returning_all();
 
         let expected = {

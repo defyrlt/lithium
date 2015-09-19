@@ -1,7 +1,11 @@
+//! Keeps stuff (mostly traits) that is used (or is going to be) across different queries.
+
 pub trait ToSQL {
     fn to_sql(&self) -> String;
 }
 
+/// Is used to build up methods which can receive either `&str` or `&Subquery`
+/// in a convenient way. You can find examples in some of `Select`'s methods.
 pub trait AsStr<'a> {
     fn as_str(&self) -> &'a str;
 }
@@ -18,6 +22,8 @@ impl<'a> AsStr<'a> for &'a Subquery<'a> {
     }
 }
 
+/// Is used to build up methods which can receive either `&str` or `&[&str; N]`
+/// in a convenient way. You can find examples in some of `Select`'s methods.
 pub trait Pusheable<'a> {
     fn push_to(&self, destination: &mut Vec<&'a str>);
 }
@@ -54,8 +60,15 @@ pusheable_impls! {
 }
 
 
+/// Struct that is used to keep result from `to_sql` of some query.
+/// If you use `with_alias` - keep in mind that it's changing content of
+/// `query` in **irreversible** way.  
+/// We do this because we need `&str` to have a nice
+/// way of using subqueries and avoid forcing users to use `String` when they don't
+/// really need to.
 #[derive(Clone)]
 pub struct Subquery<'a> {
+    /// Keeps generated SQL
     pub query: String,
     alias: Option<&'a str> // FIXME: do we need this?
 }
@@ -68,6 +81,7 @@ impl<'a> Subquery<'a> {
         }
     }
 
+    /// Appends `AS {alias}` to the `query` field
     pub fn with_alias(mut self, alias: &'a str) -> Self {
         self.alias = Some(alias);
         self.query.push_str(&format!(" AS {}", alias));

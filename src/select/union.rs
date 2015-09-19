@@ -49,24 +49,11 @@ impl<'a, L: ToSQL, R:ToSQL> ToSQL for &'a Union<L, R> {
 mod tests {
     use super::{Union, UnionMode};
     use common::ToSQL;
-    use select::{Select, SelectType, DistinctType, LimitType, OffsetType, ForType};
+    use select::Select;
 
     #[test]
     fn test_simple() {
-        let query = Select {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
-            from: "test_table",
-            joins: vec![],
-            group_by: vec![],
-            order_by: vec![],
-            where_cl: vec![],
-            having: vec![],
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
-        };
-
+        let query = Select::from("test_table");
         let union = Union::new(UnionMode::Simple, &query, &query);
 
         let expected = {
@@ -79,20 +66,7 @@ mod tests {
 
     #[test]
     fn test_owned_queries() {
-        let query = Select {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
-            from: "test_table",
-            joins: vec![],
-            group_by: vec![],
-            order_by: vec![],
-            where_cl: vec![],
-            having: vec![],
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
-        };
-
+        let query = Select::from("test_table");
         let union = Union::new(UnionMode::Simple, query.clone(), query);
 
         let expected = {
@@ -105,20 +79,7 @@ mod tests {
 
     #[test]
     fn test_union_all() {
-        let query = Select {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
-            from: "test_table",
-            joins: vec![],
-            group_by: vec![],
-            order_by: vec![],
-            where_cl: vec![],
-            having: vec![],
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
-        };
-
+        let query = Select::from("test_table");
         let union = Union::new(UnionMode::All, &query, &query);
 
         let expected = {
@@ -131,20 +92,7 @@ mod tests {
 
     #[test]
     fn test_nested() {
-        let query = Select {
-            select: SelectType::All,
-            distinct: DistinctType::Empty,
-            from: "test_table",
-            joins: vec![],
-            group_by: vec![],
-            order_by: vec![],
-            where_cl: vec![],
-            having: vec![],
-            limit: LimitType::Empty,
-            offset: OffsetType::Empty,
-            for_cl: ForType::Empty
-        };
-
+        let query = Select::from("test_table");
         let pre_union = Union::new(UnionMode::Simple, &query, &query);
         let union = Union::new(UnionMode::All, pre_union, &query);
 
