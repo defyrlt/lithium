@@ -120,36 +120,36 @@ mod tests {
 
     #[test]
     fn test_alone_where() {
-        let foo = Where::new(Operator::And).expr("foo == bar").expr("fizz == bazz");
-        assert_eq!(foo.to_sql(), "(foo == bar AND fizz == bazz)".to_string())
+        let foo = Where::new(Operator::And).expr("foo = bar").expr("fizz = bazz");
+        assert_eq!(foo.to_sql(), "(foo = bar AND fizz = bazz)".to_string())
     }
 
     #[test]
     fn test_nested_where_clauses() {
         let clause = Where::with_or()
-            .expr(Where::with_and().expr("foo == bar").expr("fizz == bazz"))
-            .expr(Where::with_and().expr("a == b").expr("c == d"));
+            .expr(Where::with_and().expr("foo = bar").expr("fizz = bazz"))
+            .expr(Where::with_and().expr("a = b").expr("c = d"));
 
         let test_sql_string = {
-            "((foo == bar AND fizz == bazz) OR \
-            (a == b AND c == d))".to_string()
+            "((foo = bar AND fizz = bazz) OR \
+            (a = b AND c = d))".to_string()
         };
         assert_eq!(clause.to_sql(), test_sql_string);
     }
 
     #[test]
     fn test_really_nested_where_clauses() {
-        let foo = Where::with_and().expr("foo == bar").expr("fizz == bazz");
-        let bar = Where::with_and().expr("a == b").expr("c == d");
+        let foo = Where::with_and().expr("foo = bar").expr("fizz = bazz");
+        let bar = Where::with_and().expr("a = b").expr("c = d");
         let bazz1 = Where::with_or().expr(foo.clone()).expr(bar.clone());
         let bazz2 = Where::with_or().expr(bar.clone()).expr(foo.clone());
         let fizz = Where::with_and().expr(bazz1).expr(bazz2);
 
         let test_sql_string = {
-            "(((foo == bar AND fizz == bazz) OR \
-            (a == b AND c == d)) AND \
-            ((a == b AND c == d) OR \
-            (foo == bar AND fizz == bazz)))".to_string()
+            "(((foo = bar AND fizz = bazz) OR \
+            (a = b AND c = d)) AND \
+            ((a = b AND c = d) OR \
+            (foo = bar AND fizz = bazz)))".to_string()
         };
         assert_eq!(fizz.to_sql(), test_sql_string);
     }
