@@ -12,7 +12,44 @@ pub struct Union<L: ToSQL, R: ToSQL> {
 }
 
 impl<L: ToSQL, R:ToSQL> Union<L, R> {
-    fn new(mode: UnionMode, left: L, right: R) -> Self {
+    /// Creates `Union` instance.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use lithium::{ToSQL, Select};
+    /// use lithium::select::{UnionMode, Union};
+    ///
+    /// let foo = Select::from("foo");
+    /// let bar = Select::from("bar");
+    /// // you can pass queries either by value or reference
+    /// let union = Union::new(UnionMode::Simple, foo, &bar);
+    /// let expected = {
+    ///     "SELECT * FROM foo \
+    ///     UNION \
+    ///     SELECT * FROM bar".to_string()
+    /// };
+    /// assert_eq!(union.to_sql(), expected);
+    /// ```
+    ///
+    /// ```
+    /// use lithium::{ToSQL, Select};
+    /// use lithium::select::{UnionMode, Union};
+    ///
+    /// let foo = Select::from("foo");
+    /// let bar = Select::from("bar");
+    /// let union = Union::new(UnionMode::Simple, &foo, &bar);
+    /// let moar = Union::new(UnionMode::All, &union, &bar);
+    /// let expected = {
+    ///     "SELECT * FROM foo \
+    ///     UNION \
+    ///     SELECT * FROM bar \
+    ///     UNION ALL \
+    ///     SELECT * FROM bar".to_string()
+    /// };
+    /// assert_eq!(moar.to_sql(), expected);
+    /// ```
+    pub fn new(mode: UnionMode, left: L, right: R) -> Self {
         Union {
             mode: mode,
             left: left,

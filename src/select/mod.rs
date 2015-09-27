@@ -19,6 +19,7 @@ pub use self::distinct::DistinctType;
 pub use self::limit::LimitType;
 pub use self::offset::OffsetType;
 pub use self::for_cl::{For, ForType};
+pub use self::union::{UnionMode, Union};
 
 /// Represents `SELECT` query.
 #[derive(Clone, PartialEq, Eq)]
