@@ -10,7 +10,7 @@ pub mod for_cl;
 pub mod union;
 
 use common::{ToSQL, AsStr, Pusheable, Subquery};
-use where_cl::{WhereType, IntoWhereType};
+use where_cl::{WhereType};
 
 pub use self::select_type::SelectType;
 pub use self::join::{Join, JoinType};
@@ -30,8 +30,8 @@ pub struct Select<'a> {
     joins: Vec<Join<'a>>,
     group_by: Vec<&'a str>,
     order_by: Vec<OrderBy<'a>>,
-    where_cl: Vec<WhereType<'a>>,
-    having: Vec<WhereType<'a>>,
+    where_cl: Vec<Box<WhereType<'a>>>,
+    having: Vec<Box<WhereType<'a>>>,
     limit: LimitType<'a>,
     offset: OffsetType<'a>,
     for_cl: ForType<'a>
@@ -244,14 +244,14 @@ impl<'a> Select<'a> {
     /// let expected = "SELECT * FROM test_table WHERE (foo == bar OR bar == bazz)".to_string();
     /// assert_eq!(query.to_sql(), expected);
     /// ```
-    pub fn filter<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
-        self.where_cl.push(clause.into_where_type());
+    pub fn filter<T: WhereType<'a>>(mut self, clause: T) -> Self {
+        self.where_cl.push(Box::new(clause));
         self
     }
 
     /// Specifies `HAVING` clause. Has the same API and usage as `filter`.
-    pub fn having<T: IntoWhereType<'a>>(mut self, clause: T) -> Self {
-        self.having.push(clause.into_where_type());
+    pub fn having<T: WhereType<'a>>(mut self, clause: T) -> Self {
+        self.having.push(Box::new(clause));
         self
     }
 

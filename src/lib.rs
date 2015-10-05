@@ -17,18 +17,18 @@
 //! You can find examples in documentation for every struct.
 
 pub mod common;
-pub mod select;
+// pub mod select;
 pub mod where_cl;
-pub mod update;
-pub mod insert;
+// pub mod update;
+// pub mod insert;
 
 #[doc(inline)]
 pub use common::{ToSQL, AsStr, Pusheable};
 #[doc(inline)]
-pub use select::Select;
+// pub use select::Select;
 #[doc(inline)]
-pub use insert::Insert;
+// pub use insert::Insert;
 #[doc(inline)]
-pub use update::Update;
+// pub use update::Update;
 #[doc(inline)]
 pub use where_cl::Where;

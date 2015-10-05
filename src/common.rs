@@ -1,8 +1,29 @@
 //! Keeps stuff (mostly traits) that is used (or is going to be) across different queries.
 
+use std::fmt::Display;
+
 pub trait ToSQL {
     fn to_sql(&self) -> String;
 }
+
+pub trait Numeric {}
+
+macro_rules! numeric_impls {
+   ($($target: ty)+) => {
+        $(
+            impl Numeric for $target {}
+        )+
+    }
+}
+
+numeric_impls!(u8 u16 u32 u64 i8 i16 i32 i64 f32 f64);
+
+impl<T: Numeric + Display> ToSQL for T {
+    fn to_sql(&self) -> String {
+        self.to_string()
+    }
+}
+
 
 /// Is used to build up methods which can receive either `&str` or `&Subquery`
 /// in a convenient way. You can find examples in some of `Select`'s methods.

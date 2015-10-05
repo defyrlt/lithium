@@ -1,7 +1,7 @@
 //! Keeps `UPDATE` related stuff.
 
 use common::{ToSQL, Pusheable, AsStr};
-use where_cl::{WhereType, IntoWhereType};
+use where_cl::{WhereType};
 
 // TODO: make it pretty
 const RETURNING: &'static str = " RETURNING ";
@@ -25,7 +25,7 @@ pub struct Update<'a> {
     table: &'a str,
     expressions: Vec<&'a str>,
     from: FromType<'a>,
-    where_cl: Vec<WhereType<'a>>,
+    where_cl: Vec<Box<WhereType<'a>>>,
     returning: Returning<'a>
 }
 
@@ -96,8 +96,8 @@ impl<'a> Update<'a> {
     /// let expected = "UPDATE foo SET a = 2 WHERE (a > 2 OR b < 3) AND c > 4".to_string();
     /// assert_eq!(update.to_sql(), expected);
     /// ```
-    pub fn filter<T: IntoWhereType<'a>>(mut self, expr: T) -> Self {
-        self.where_cl.push(expr.into_where_type());
+    pub fn filter<T: WhereType<'a>>(mut self, expr: T) -> Self {
+        self.where_cl.push(Box::new(expr));
         self
     }
 

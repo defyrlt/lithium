@@ -1,15 +1,15 @@
 //! Keeps `WHERE` related stuff.
 
-use common::ToSQL;
+use common::{ToSQL, Numeric, Subquery};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum Operator {
     And,
     Or
 }
 
 impl Operator {
-    pub fn to_sql(&self) -> &str {
+    pub fn to_sql(&self) -> &'static str {
         match *self {
             Operator::And => "AND",
             Operator::Or => "OR"
@@ -17,19 +17,35 @@ impl Operator {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum WhereType<'a> {
-    Simple(&'a str),
-    Extended(Where<'a>),
+pub trait WhereType<'a>: ToSQL + CloneToTrait<'a> {}
+impl<'a> WhereType<'a> for &'a str {}
+impl<'a, T: Numeric + ToSQL + Clone> WhereType<'a> for T {}
+impl<'a> WhereType<'a> for Where<'a> {}
+// TODO: find a nice way to do it without cloning
+// impl<'a> WhereType for &'a Subquery<'a> {}
+
+pub trait CloneToTrait<'a>: 'a {
+    fn clone_to_trait(&self) -> Box<WhereType<'a>>;
 }
 
+impl<'a, T: Clone + WhereType<'a>> CloneToTrait<'a> for T {
+    fn clone_to_trait(&self) -> Box<WhereType<'a>> {
+        Box::new(self.clone()) 
+    }
+}
+
+impl<'a> Clone for Box<WhereType<'a>> {
+    fn clone(&self) -> Box<WhereType<'a>> {
+        self.clone_to_trait()
+    }
+}
 
 /// Represents `WHERE` clause which is widely used in different queries.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Where<'a> {
-    /// Operator which will be used to join expressions
+    /// Operator which will be used to join filters
     pub operator: Operator,
-    expressions: Vec<WhereType<'a>>,
+    filters: Vec<Box<WhereType<'a> + 'a>>,
 }
 
 impl<'a> Where<'a> {
@@ -37,7 +53,7 @@ impl<'a> Where<'a> {
     pub fn new(operator: Operator) -> Self {
         Where {
             operator: operator,
-            expressions: vec![]
+            filters: vec![]
         }
     }
     
@@ -51,35 +67,9 @@ impl<'a> Where<'a> {
         Self::new(Operator::Or)
     }
 
-    /// Specifies clause. Can receive either `&str` or `Where`.
-    pub fn expr<T: IntoWhereType<'a>>(mut self, expression: T) -> Self {
-        self.expressions.push(expression.into_where_type());
+    pub fn filter<T: WhereType<'a> + 'a>(mut self, raw: T) -> Self {
+        self.filters.push(Box::new(raw));
         self
-    }
-}
-
-pub trait IntoWhereType<'a> {
-    fn into_where_type(self) -> WhereType<'a>;
-}
-
-impl<'a> IntoWhereType<'a> for &'a str {
-    fn into_where_type(self) -> WhereType<'a> {
-        WhereType::Simple(self)
-    }
-}
-
-impl<'a> IntoWhereType<'a> for Where<'a> {
-    fn into_where_type(self) -> WhereType<'a> {
-        WhereType::Extended(self)
-    }
-}
-
-impl<'a> ToSQL for WhereType<'a> {
-    fn to_sql(&self) -> String {
-        match *self {
-            WhereType::Simple(clause) => clause.to_string(),
-            WhereType::Extended(ref clause) => clause.to_sql()
-        }
     }
 }
 
@@ -94,11 +84,10 @@ impl<'a> ToSQL for Where<'a> {
         let operator = format!(" {} ", self.operator.to_sql());
         let mut rv = String::new();
         rv.push('(');
-        rv.push_str(&self.expressions.iter()
+        rv.push_str(&self.filters.iter()
                     .map(|x| x.to_sql())
                     .collect::<Vec<_>>()
                     .join(&operator));
-
         rv.push(')');
         rv
     }
@@ -120,18 +109,18 @@ mod tests {
 
     #[test]
     fn test_alone_where() {
-        let foo = Where::new(Operator::And).expr("foo = bar").expr("fizz = bazz");
-        assert_eq!(foo.to_sql(), "(foo = bar AND fizz = bazz)".to_string())
+        let foo = Where::new(Operator::And).filter("foo = bar").filter("fizz = bazz");
+        assert_eq!(foo.to_sql(), "(foo = bar AND fizz = bazz)".to_string());
     }
 
     #[test]
     fn test_nested_where_clauses() {
         let clause = Where::with_or()
-            .expr(Where::with_and().expr("foo = bar").expr("fizz = bazz"))
-            .expr(Where::with_and().expr("a = b").expr("c = d"));
+            .filter(Where::with_and().filter("foo != bar").filter("fizz = bazz"))
+            .filter(Where::with_and().filter("a = b").filter("c = d"));
 
         let test_sql_string = {
-            "((foo = bar AND fizz = bazz) OR \
+            "((foo != bar AND fizz = bazz) OR \
             (a = b AND c = d))".to_string()
         };
         assert_eq!(clause.to_sql(), test_sql_string);
@@ -139,17 +128,18 @@ mod tests {
 
     #[test]
     fn test_really_nested_where_clauses() {
-        let foo = Where::with_and().expr("foo = bar").expr("fizz = bazz");
-        let bar = Where::with_and().expr("a = b").expr("c = d");
-        let bazz1 = Where::with_or().expr(foo.clone()).expr(bar.clone());
-        let bazz2 = Where::with_or().expr(bar.clone()).expr(foo.clone());
-        let fizz = Where::with_and().expr(bazz1).expr(bazz2);
+        let foo = Where::with_and().filter("foo = bar").filter("fizz = 2");
+        let bar = Where::with_and().filter("a = b").filter("c = d");
+
+        let bazz1 = Where::with_or().filter(foo.clone()).filter(bar.clone());
+        let bazz2 = Where::with_or().filter(bar.clone()).filter(foo.clone());
+        let fizz = Where::with_and().filter(bazz1).filter(bazz2);
 
         let test_sql_string = {
-            "(((foo = bar AND fizz = bazz) OR \
+            "(((foo = bar AND fizz = 2) OR \
             (a = b AND c = d)) AND \
             ((a = b AND c = d) OR \
-            (foo = bar AND fizz = bazz)))".to_string()
+            (foo = bar AND fizz = 2)))".to_string()
         };
         assert_eq!(fizz.to_sql(), test_sql_string);
     }
