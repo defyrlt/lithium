@@ -6,13 +6,13 @@ use where_cl::{WhereType};
 // TODO: make it pretty
 const RETURNING: &'static str = " RETURNING ";
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum FromType<'a> {
     Empty,
     Specified(&'a str)
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub enum Returning<'a> {
     Empty,
     All,
@@ -20,7 +20,7 @@ pub enum Returning<'a> {
 }
 
 /// Represents `UPDATE` query
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Update<'a> {
     table: &'a str,
     expressions: Vec<&'a str>,
@@ -91,7 +91,7 @@ impl<'a> Update<'a> {
     ///
     /// ```
     /// use lithium::{Update, Where};
-    /// let where_cl = Where::with_or().expr("a > 2").expr("b < 3");
+    /// let where_cl = Where::with_or().filter("a > 2").filter("b < 3");
     /// let update = Update::new("foo").set("a = 2").filter(where_cl).filter("c > 4");
     /// let expected = "UPDATE foo SET a = 2 WHERE (a > 2 OR b < 3) AND c > 4".to_string();
     /// assert_eq!(update.to_sql(), expected);
@@ -183,7 +183,7 @@ impl<'a> Update<'a> {
 mod tests {
     use super::{FromType, Returning, Update};
     use common::ToSQL;
-    use where_cl::{Where, IntoWhereType};
+    use where_cl::{Where};
     use select::Select;
 
     #[test]
@@ -202,35 +202,16 @@ mod tests {
 
     #[test]
     fn test_simple() {
-        let update = Update {
-            table: "test_table",
-            expressions: vec!["a = 2", "b = 3"],
-            from: FromType::Empty,
-            where_cl: vec![],
-            returning: Returning::Empty
-        };
-
         let built = Update::new("test_table").set("a = 2").set("b = 3");
-
         let expected = {
             "UPDATE test_table \
             SET a = 2, b = 3".to_string()
         };
-
-        assert!(update == built);
         assert_eq!(built.to_sql(), expected);
     }
 
     #[test]
     fn test_returning_all() {
-        let update = Update {
-            table: "test_table",
-            expressions: vec!["a = 2", "b = 3"],
-            from: FromType::Specified("other_test_table"),
-            where_cl: vec!["d == 3".into_where_type()],
-            returning: Returning::All
-        };
-
         let built = Update::new("test_table")
             .set(&["a = 2", "b = 3"])
             .from("other_test_table")
@@ -245,23 +226,14 @@ mod tests {
             RETURNING *".to_string()
         };
 
-        assert!(update == built);
         assert_eq!(built.to_sql(), expected);
     }
 
     #[test]
     fn test_returning_some() {
-        let foo = Where::with_and().expr("foo == bar").expr("fizz == bazz");
-        let bar = Where::with_and().expr("a == b").expr("c == d");
-        let where_cl = Where::with_or().expr(foo).expr(bar);
-
-        let update = Update {
-            table: "test_table",
-            expressions: vec!["a = 2", "b = 3"],
-            from: FromType::Empty,
-            where_cl: vec![where_cl.clone().into_where_type()],
-            returning: Returning::Specified(vec!["a", "b"])
-        };
+        let foo = Where::with_and().filter("foo == bar").filter("fizz == bazz");
+        let bar = Where::with_and().filter("a == b").filter("c == d");
+        let where_cl = Where::with_or().filter(foo).filter(bar);
 
         let built = Update::new("test_table")
             .set(&["a = 2", "b = 3"])
@@ -278,7 +250,6 @@ mod tests {
             RETURNING a, b".to_string()
         };
 
-        assert!(update == built);
         assert_eq!(built.to_sql(), expected);
     }
 

@@ -6,7 +6,7 @@ use common::{ToSQL, Pusheable};
 // TODO: make it pretty
 const RETURNING: &'static str = " RETURNING ";
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 enum Values<'a> {
     Default,
     Specified(Vec<Vec<&'a str>>),
@@ -32,7 +32,7 @@ impl<'a> Values<'a> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 enum Returning<'a> {
     Empty,
     All,
@@ -40,7 +40,7 @@ enum Returning<'a> {
 }
 
 /// Represents `INSERT` query.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Insert<'a> {
     table: &'a str,
     columns: Vec<&'a str>,
@@ -218,55 +218,28 @@ mod tests {
 
     #[test]
     fn test_simple() {
-        let insert = Insert {
-            table: "test_table",
-            columns: vec![],
-            values: Values::Default,
-            returning: Returning::Empty,
-        };
-
-        let built = Insert::into("test_table");
-
+        let insert = Insert::into("test_table");
         let expected = {
             "INSERT INTO test_table \
             DEFAULT VALUES".to_string()
         };
-
-        assert!(insert == built);
         assert_eq!(insert.to_sql(), expected);
     }
 
     #[test]
     fn test_with_spec_return() {
-        let insert = Insert {
-            table: "test_table",
-            columns: vec![],
-            values: Values::Default,
-            returning: Returning::Specified(vec!["foo", "bar"])
-        };
-
-        let built = Insert::into("test_table").returning("foo").returning("bar");
-
+        let insert = Insert::into("test_table").returning("foo").returning("bar");
         let expected = {
             "INSERT INTO test_table \
             DEFAULT VALUES \
             RETURNING foo, bar"
         };
-
-        assert!(insert == built);
         assert_eq!(insert.to_sql(), expected);
     }
 
     #[test]
     fn test_with_values() {
-        let insert = Insert {
-            table: "test_table",
-            columns: vec!["foo", "bar"],
-            values: Values::Specified(vec![vec!["DEFAULT, fizz"], vec!["foo", "bar"]]),
-            returning: Returning::All
-        };
-
-        let built = Insert::into("test_table")
+        let insert = Insert::into("test_table")
             .columns("foo")
             .columns(&["bar"])
             .values(vec!["DEFAULT, fizz"])
@@ -279,21 +252,13 @@ mod tests {
             RETURNING *"
         };
 
-        assert!(insert == built);
         assert_eq!(insert.to_sql(), expected);
     }
 
     #[test]
     fn test_with_query() {
         let query = Select::from("test_table");
-        let insert = Insert {
-            table: "test_table",
-            columns: vec!["foo", "bar"],
-            values: Values::Select(query.clone()),
-            returning: Returning::Specified(vec!["bar", "foo"])
-        };
-
-        let built = Insert::into("test_table")
+        let insert = Insert::into("test_table")
             .columns(&["foo", "bar"])
             .query(query)
             .returning(&["bar", "foo"]);
@@ -304,7 +269,6 @@ mod tests {
             RETURNING bar, foo"
         };
         
-        assert!(insert == built);
         assert_eq!(insert.to_sql(), expected);
     }
 }

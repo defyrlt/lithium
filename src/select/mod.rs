@@ -411,7 +411,7 @@ impl<'a> ToSQL for Select<'a> {
     }
 }
 
-impl<'a> ToSQL for &'a Select<'a> {
+impl<'a, 'b> ToSQL for &'b Select<'a> {
     fn to_sql(&self) -> String {
         (**self).to_sql()
     }
