@@ -17,7 +17,7 @@
 //! You can find examples in documentation for every struct.
 
 pub mod common;
-// pub mod select;
+pub mod select;
 pub mod where_cl;
 // pub mod update;
 // pub mod insert;
@@ -25,7 +25,7 @@ pub mod where_cl;
 #[doc(inline)]
 pub use common::{ToSQL, AsStr, Pusheable};
 #[doc(inline)]
-// pub use select::Select;
+pub use select::Select;
 #[doc(inline)]
 // pub use insert::Insert;
 #[doc(inline)]
