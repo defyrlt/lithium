@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Operator",""],["WhereType",""]],"struct":[["Where","Represents `WHERE` clause which is widely used in different queries."]],"trait":[["IntoWhereType",""]]});

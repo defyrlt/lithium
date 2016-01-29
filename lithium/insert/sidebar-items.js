@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Insert","Represents `INSERT` query."]]});

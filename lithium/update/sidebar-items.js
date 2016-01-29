@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["FromType",""],["Returning",""]],"struct":[["Update","Represents `UPDATE` query"]]});

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Insert` struct in crate `lithium`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Insert">
+
+    <title>lithium::Insert - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <a href='../lithium/index.html'><img src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Electron_shell_003_Lithium_-_no_label.svg/2000px-Electron_shell_003_Lithium_-_no_label.svg.png' alt='logo' width='100'></a>
+        <p class='location'><a href='index.html'>lithium</a></p><script>window.sidebarCurrent = {name: 'Insert', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>lithium</a>::<wbr><a class='struct' href=''>Insert</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                [<span class='inner'>&#x2212;</span>]
+            </a>
+        </span><a id='src-1262' class='srclink' href='../src/lithium/insert.rs.html#44-49' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Insert&lt;'a&gt; {
+    // some fields omitted
+}</pre><div class='docblock'><p>Represents <code>INSERT</code> query.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><code>impl&lt;'a&gt; <a class='struct' href='../lithium/insert/struct.Insert.html' title='lithium::insert::Insert'>Insert</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.into' class='method'><code>fn <a href='#method.into' class='fnname'>into</a>(table: &amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; Self</code></h4>
+<div class='docblock'><p>Method to start with.</p>
+
+<h1 id='example' class='section-header'><a href='#example'>Example</a></h1><pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>lithium</span>::<span class='ident'>Insert</span>;
+<span class='kw'>let</span> <span class='ident'>query</span> <span class='op'>=</span> <span class='ident'>Insert</span>::<span class='ident'>into</span>(<span class='string'>&quot;test_table&quot;</span>);
+<span class='kw'>let</span> <span class='ident'>expected</span> <span class='op'>=</span> <span class='string'>&quot;INSERT INTO test_table DEFAULT VALUES&quot;</span>.<span class='ident'>to_string</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>query</span>.<span class='ident'>to_sql</span>(), <span class='ident'>expected</span>);</pre>
+</div><h4 id='method.columns' class='method'><code>fn <a href='#method.columns' class='fnname'>columns</a>&lt;T: <a class='trait' href='../lithium/trait.Pusheable.html' title='lithium::Pusheable'>Pusheable</a>&lt;'a&gt;&gt;(self, columns: T) -&gt; Self</code></h4>
+<div class='docblock'><p>Specifies columns for <code>INSERT</code>.</p>
+
+<h1 id='example-1' class='section-header'><a href='#example-1'>Example</a></h1><pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>lithium</span>::<span class='ident'>Insert</span>;
+<span class='kw'>let</span> <span class='ident'>query</span> <span class='op'>=</span> <span class='ident'>Insert</span>::<span class='ident'>into</span>(<span class='string'>&quot;test_table&quot;</span>).<span class='ident'>columns</span>(<span class='kw-2'>&amp;</span>[<span class='string'>&quot;foo&quot;</span>, <span class='string'>&quot;bar&quot;</span>]).<span class='ident'>columns</span>(<span class='string'>&quot;bazz&quot;</span>);</pre>
+</div><h4 id='method.values' class='method'><code>fn <a href='#method.values' class='fnname'>values</a>(self, input_values: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;) -&gt; Self</code></h4>
+<div class='docblock'><p>Specifies <code>INSERT</code> values. Sorry for receiving <code>Vec</code> here - we&#39;re going to find a better way
+for this.</p>
+
+<h1 id='examples' class='section-header'><a href='#examples'>Examples</a></h1><pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>lithium</span>::<span class='ident'>Insert</span>;
+<span class='kw'>let</span> <span class='ident'>query</span> <span class='op'>=</span> <span class='ident'>Insert</span>::<span class='ident'>into</span>(<span class='string'>&quot;foo&quot;</span>).<span class='ident'>columns</span>(<span class='string'>&quot;bar&quot;</span>).<span class='ident'>values</span>(<span class='macro'>vec</span><span class='macro'>!</span>[<span class='string'>&quot;bazz&quot;</span>]);</pre>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>lithium</span>::<span class='ident'>Insert</span>;
+<span class='kw'>let</span> <span class='ident'>query</span> <span class='op'>=</span> <span class='ident'>Insert</span>::<span class='ident'>into</span>(<span class='string'>&quot;foo&quot;</span>).<span class='ident'>columns</span>(<span class='kw-2'>&amp;</span>[<span class='string'>&quot;bar&quot;</span>, <span class='string'>&quot;bazz&quot;</span>])
+    .<span class='ident'>values</span>(<span class='macro'>vec</span><span class='macro'>!</span>[<span class='string'>&quot;123&quot;</span>, <span class='string'>&quot;123&quot;</span>]).<span class='ident'>values</span>(<span class='macro'>vec</span><span class='macro'>!</span>[<span class='string'>&quot;345&quot;</span>, <span class='string'>&quot;678&quot;</span>]); 
+<span class='kw'>let</span> <span class='ident'>expected</span> <span class='op'>=</span> <span class='string'>&quot;INSERT INTO foo (bar, bazz) VALUES (123, 123), (345, 678)&quot;</span>.<span class='ident'>to_string</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>query</span>.<span class='ident'>to_sql</span>(), <span class='ident'>expected</span>);</pre>
+</div><h4 id='method.query' class='method'><code>fn <a href='#method.query' class='fnname'>query</a>(self, query: <a class='struct' href='../lithium/select/struct.Select.html' title='lithium::select::Select'>Select</a>&lt;'a&gt;) -&gt; Self</code></h4>
+<div class='docblock'><p>Specifies <code>SELECT</code> as <code>INSERT</code> value. Results in <code>INSERT INTO ... SELECT</code></p>
+
+<h1 id='example-2' class='section-header'><a href='#example-2'>Example</a></h1><pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>lithium</span>::{<span class='ident'>Select</span>, <span class='ident'>Insert</span>};
+<span class='kw'>let</span> <span class='ident'>select</span> <span class='op'>=</span> <span class='ident'>Select</span>::<span class='ident'>from</span>(<span class='string'>&quot;foo&quot;</span>).<span class='ident'>columns</span>(<span class='kw-2'>&amp;</span>[<span class='string'>&quot;a&quot;</span>, <span class='string'>&quot;b&quot;</span>]);
+<span class='kw'>let</span> <span class='ident'>insert</span> <span class='op'>=</span> <span class='ident'>Insert</span>::<span class='ident'>into</span>(<span class='string'>&quot;bar&quot;</span>).<span class='ident'>columns</span>(<span class='kw-2'>&amp;</span>[<span class='string'>&quot;a&quot;</span>, <span class='string'>&quot;b&quot;</span>]).<span class='ident'>query</span>(<span class='ident'>select</span>);
+<span class='kw'>let</span> <span class='ident'>expected</span> <span class='op'>=</span> <span class='string'>&quot;INSERT INTO bar (a, b) SELECT a, b FROM foo&quot;</span>.<span class='ident'>to_string</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>insert</span>.<span class='ident'>to_sql</span>(), <span class='ident'>expected</span>);</pre>
+</div><h4 id='method.returning_all' class='method'><code>fn <a href='#method.returning_all' class='fnname'>returning_all</a>(self) -&gt; Self</code></h4>
+<div class='docblock'><p>Specifies <code>RETURNING</code> clause. WIll result in <code>RETURNING *</code></p>
+
+<h1 id='example-3' class='section-header'><a href='#example-3'>Example</a></h1><pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>lithium</span>::<span class='ident'>Insert</span>;
+<span class='kw'>let</span> <span class='ident'>query</span> <span class='op'>=</span> <span class='ident'>Insert</span>::<span class='ident'>into</span>(<span class='string'>&quot;foo&quot;</span>).<span class='ident'>values</span>(<span class='macro'>vec</span><span class='macro'>!</span>[<span class='string'>&quot;bar&quot;</span>]).<span class='ident'>returning_all</span>();
+<span class='kw'>let</span> <span class='ident'>expected</span> <span class='op'>=</span> <span class='string'>&quot;INSERT INTO foo VALUES (bar) RETURNING *&quot;</span>.<span class='ident'>to_string</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>query</span>.<span class='ident'>to_sql</span>(), <span class='ident'>expected</span>);</pre>
+</div><h4 id='method.returning' class='method'><code>fn <a href='#method.returning' class='fnname'>returning</a>&lt;T: <a class='trait' href='../lithium/trait.Pusheable.html' title='lithium::Pusheable'>Pusheable</a>&lt;'a&gt;&gt;(self, input_columns: T) -&gt; Self</code></h4>
+<div class='docblock'><p>Specifies columns for <code>RETURNING</code> clause.</p>
+
+<h1 id='example-4' class='section-header'><a href='#example-4'>Example</a></h1><pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>lithium</span>::<span class='ident'>Insert</span>;
+<span class='kw'>let</span> <span class='ident'>query</span> <span class='op'>=</span> <span class='ident'>Insert</span>::<span class='ident'>into</span>(<span class='string'>&quot;foo&quot;</span>).<span class='ident'>values</span>(<span class='macro'>vec</span><span class='macro'>!</span>[<span class='string'>&quot;bar&quot;</span>, <span class='string'>&quot;bazz&quot;</span>]).<span class='ident'>returning</span>(<span class='kw-2'>&amp;</span>[<span class='string'>&quot;a&quot;</span>, <span class='string'>&quot;b&quot;</span>]);
+<span class='kw'>let</span> <span class='ident'>expected</span> <span class='op'>=</span> <span class='string'>&quot;INSERT INTO foo VALUES (bar, bazz) RETURNING a, b&quot;</span>.<span class='ident'>to_string</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>query</span>.<span class='ident'>to_sql</span>(), <span class='ident'>expected</span>);</pre>
+</div><h4 id='method.remove_returning' class='method'><code>fn <a href='#method.remove_returning' class='fnname'>remove_returning</a>(self) -&gt; Self</code></h4>
+<div class='docblock'><p>Removes <code>RETURNING</code> clause.</p>
+</div><h4 id='method.to_sql' class='method'><code>fn <a href='#method.to_sql' class='fnname'>to_sql</a>(&amp;self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a></code></h4>
+<div class='docblock'><p>Generates SQL.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 id='derived_implementations'>Derived Implementations </h3><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> for <a class='struct' href='../lithium/insert/struct.Insert.html' title='lithium::insert::Insert'>Insert</a>&lt;'a&gt;</code></h3><div class='impl-items'></div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='../lithium/insert/struct.Insert.html' title='lithium::insert::Insert'>Insert</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.eq' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.eq' class='fnname'>eq</a>(&amp;self, __arg_0: &amp;<a class='struct' href='../lithium/insert/struct.Insert.html' title='lithium::insert::Insert'>Insert</a>&lt;'a&gt;) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.ne' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.ne' class='fnname'>ne</a>(&amp;self, __arg_0: &amp;<a class='struct' href='../lithium/insert/struct.Insert.html' title='lithium::insert::Insert'>Insert</a>&lt;'a&gt;) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../lithium/insert/struct.Insert.html' title='lithium::insert::Insert'>Insert</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.clone' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../lithium/insert/struct.Insert.html' title='lithium::insert::Insert'>Insert</a>&lt;'a&gt;</code></h4>
+<h4 id='method.clone_from' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "lithium";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script defer src="../search-index.js"></script>
+</body>
+</html>
