@@ -1,4 +1,1 @@
-# lithium [![Build Status](https://travis-ci.org/defyrlt/lithium.svg)](https://travis-ci.org/defyrlt/lithium)
-SQL builder for Rust (work in progress)
-
-[Documentation](https://defyrlt.github.io/lithium/lithium/index.html)
+This repository is abandoned. Take a look at [diesel](https://github.com/sgrif/diesel) if you're looking for query builder/ORM.
